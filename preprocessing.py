@@ -2,13 +2,18 @@ import pandas as pd
 import numpy as np
 
 def preprocess_data(df):
+    # --- STEP 0: INITIAL DROPS ---
+    # Model eğitimi için gereksiz olan veya sızıntı yapabilecek anahtar ve tarih sütunlarını çıkarıyoruz.
+    drop_initially = ['PO_KEY', 'LEAD_TIME_START_DATE', 'LEAD_TIME_FINISH_DATE']
+    df = df.drop(columns=[c for c in drop_initially if c in df.columns])
+
     # --- STEP 1: TYPE CONVERSIONS ---
-    string_cols = ['LOAD_ITEM', 'PLANT', 'PO_KEY', 'MAINPART', 'VENDORFINAL',
+    string_cols = ['LOAD_ITEM', 'PLANT', 'MAINPART', 'VENDORFINAL',
                    'MATERIALSPEC', 'MATERIALTYPE', 'STARTCONDITION', 'FINALCONDITION', 'DIMENSIONCODE']
     for col in [c for c in string_cols if c in df.columns]:
         df[col] = df[col].astype(str).replace(['nan', 'None', ''], np.nan)
 
-    date_cols = ['LEAD_TIME_START_DATE', 'LEAD_TIME_FINISH_DATE', 'PO_CREATIONDATE', 'İLK_BARKOD_TARİH']
+    date_cols = ['PO_CREATIONDATE', 'İLK_BARKOD_TARİH']
     for col in [c for c in date_cols if c in df.columns]:
         df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
 
