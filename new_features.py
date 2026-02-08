@@ -56,11 +56,52 @@ def add_new_material_classes(df):
     df['MATERIALTYPE_NEW'] = df['MATERIALTYPE'].map(material_map).fillna('Diğer')
     return df
 
+
+import numpy as np
+
+
+def add_geometric_groups(df):
+
+    mapping = {
+        'EXTRUSION METALLIC': 'EXTRUSION',
+        'RECTANGULAR BAR METALLIC': 'RECTANGULAR',
+        'SHEET METALLIC': 'SHEET METAL',
+        'PLATE METALLIC': 'SHEET METAL',
+        'FORGING(RAW)': 'SHEET METAL',
+        'MESH METALLIC': 'SHEET METAL',
+        'STD. FLAT, SEMI FIN PARTS': 'SHEET METAL',
+        'ROUND BAR METALLIC': 'ROUND',
+        'ROUND TUBE METALLIC': 'ROUND'
+    }
+    df['GEOMETRIC_GROUP'] = df['DIMENSIONCODE'].map(mapping)
+
+    # Adım 2: Eksik Veri Doldurma (Gage ve Width için 50 kuralı)
+    non_round_mask = df['GEOMETRIC_GROUP'] != 'ROUND'
+
+    for col in ['GAGE', 'WIDTH']:
+        df.loc[non_round_mask & ((df[col] == 0) | (df[col].isna())), col] = 50
+
+    # Adım 3: Alan ve Hacim Hesaplama
+    # SECTION_AREA -> CS_AREA (Cross-Section Area)
+    df['CS_AREA'] = 0.0
+
+    # ROUND
+    round_mask = df['GEOMETRIC_GROUP'] == 'ROUND'
+    df.loc[round_mask, 'CS_AREA'] = (df['OUTERDIAMETER'] ** 2) * 0.7854
+
+    # DİĞERLERİ
+    df.loc[non_round_mask, 'CS_AREA'] = df['WIDTH'] * df['GAGE']
+
+    # VOLUME_INDEX -> CALC_VOLUME (Calculated Volume)
+    df['CALC_VOLUME'] = df['CS_AREA'] * df.get('LENGTH', 1)
+
+    return df
+
 def add_features(df):
     df = df.copy()
 
     # Tüm alt fonksiyonları sırayla çalıştır
-    df = add_geometric_features(df)
     df = add_new_material_classes(df)
+    df = add_geometric_groups(df)
 
     return df
