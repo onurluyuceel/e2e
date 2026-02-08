@@ -16,7 +16,6 @@ def main():
     # Temizlenmiş veriyi yedek olarak kaydet
     df.to_excel('data_processed.xlsx', index=False)
     print("Temizlenmiş veri 'data_processed.xlsx' adıyla kaydedildi.")
-    
 
     df = pd.read_excel('data_processed.xlsx')
 
@@ -31,17 +30,13 @@ def main():
     df_featured.to_excel('data_with_features.xlsx', index=False)
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
 
-    """
     # 3. Analizler
     print("Analizler başlatılıyor...")
     run_all_analyses(df_featured)
-    """
 
-    """
     # 4. Eğitim
     print("CatBoost model eğitimi başlatılıyor...")
     trained_model = train_catboost_model(df_featured)
-    """
 
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
