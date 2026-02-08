@@ -1,10 +1,8 @@
-
 import pandas as pd
 from preprocessing import preprocess_data
 from new_features import add_features
 from analysis import run_all_analyses
 from catboost_model import train_catboost_model
-
 
 def main():
     
@@ -36,7 +34,7 @@ def main():
 
     # 4. Eğitim
     print("CatBoost model eğitimi başlatılıyor...")
-    trained_model = train_catboost_model(df_featured)
+    train_catboost_model(df_featured)
 
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
