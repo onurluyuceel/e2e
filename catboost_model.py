@@ -27,7 +27,8 @@ def train_catboost_model(df, target='LEAD_TIME'):
         l2_leaf_reg=10,
         eval_metric='R2',
         early_stopping_rounds=100,
-        verbose=500
+        verbose=500,
+        allow_writing_files=False
     )
 
     # 4. Eğitim
