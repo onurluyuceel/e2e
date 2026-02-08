@@ -1,32 +1,3 @@
-import numpy as np
-
-def add_geometric_features(df):
-    """Geometrik aileleri belirler ve hacim/alan hesaplar."""
-    has_od = (df['OUTERDIAMETER'] > 0)
-    has_gage_or_width = (df['GAGE'] > 0) | (df['WIDTH'] > 0)
-
-    conditions = [
-        has_od,
-        (~has_od) & has_gage_or_width,
-        (~has_od) & (~has_gage_or_width)
-    ]
-    choices = ['ROUND', 'FLAT', 'LINEAR']
-    df['GEO_FAMILY'] = np.select(conditions, choices, default='OTHER')
-
-    # FLAT için 10 kuralı
-    is_flat = (df['GEO_FAMILY'] == 'FLAT')
-    df.loc[is_flat, 'GAGE'] = df.loc[is_flat, 'GAGE'].replace(0, np.nan).fillna(10)
-    df.loc[is_flat, 'WIDTH'] = df.loc[is_flat, 'WIDTH'].replace(0, np.nan).fillna(10)
-
-    # Alan ve Hacim
-    df['SECTION_AREA'] = 0.0
-    df.loc[df['GEO_FAMILY'] == 'ROUND', 'SECTION_AREA'] = (df['OUTERDIAMETER'] ** 2) * 0.7853
-    df.loc[df['GEO_FAMILY'] == 'FLAT', 'SECTION_AREA'] = df['GAGE'] * df['WIDTH']
-    df.loc[df['GEO_FAMILY'] == 'LINEAR', 'SECTION_AREA'] = 1.0
-
-    df['VOLUME_INDEX'] = df['SECTION_AREA'] * df['LENGTH']
-    return df
-
 def add_new_material_classes(df):
     """MATERIALTYPE sütununa göre malzeme sınıflarını (Malzeme Sınıfı) ekler."""
     material_map = {
@@ -55,10 +26,6 @@ def add_new_material_classes(df):
     # Yeni sütunu oluşturuyoruz. Eğer tabloda olmayan bir tip gelirse 'Diğer' olarak işaretler.
     df['MATERIALTYPE_NEW'] = df['MATERIALTYPE'].map(material_map).fillna('Diğer')
     return df
-
-
-import numpy as np
-
 
 def add_geometric_groups(df):
 
@@ -96,7 +63,6 @@ def add_geometric_groups(df):
     df['CALC_VOLUME'] = df['CS_AREA'] * df.get('LENGTH', 1)
 
     return df
-
 
 def add_condition_change_feature(df):
     """
