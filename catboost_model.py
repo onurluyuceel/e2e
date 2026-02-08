@@ -6,7 +6,10 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 def train_catboost_model(df, target='LEAD_TIME'):
     # 1. Seçili Özellikler
     features = [
-
+        'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
+        'MATERIALSPEC', 'MATERIALTYPE', 'MATERIALTYPE_NEW', 'STARTCONDITION',
+        'FINALCONDITION', 'IS_CONDITION_CHANGED', 'DIMENSIONCODE', 'GEOMETRIC_GROUP', 'GAGE',
+        'WIDTH', 'LENGTH', 'OUTERDIAMETER', 'CALC_VOLUME', 'CS_AREA'
     ]
 
     X = df[features]
