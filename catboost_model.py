@@ -1,4 +1,3 @@
-
 import numpy as np
 from catboost import CatBoostRegressor
 from sklearn.model_selection import train_test_split
@@ -7,11 +6,7 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 def train_catboost_model(df, target='LEAD_TIME'):
     # 1. Seçili Özellikler
     features = [
-        'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
-        'MATERIALSPEC', 'MATERIALTYPE', 'STARTCONDITION',
-        'FINALCONDITION', 'DIMENSIONCODE', 'GAGE',
-        'WIDTH', 'LENGTH', 'OUTERDIAMETER',
-        'GEO_FAMILY', 'VOLUME_INDEX'
+
     ]
 
     X = df[features]
