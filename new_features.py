@@ -31,12 +31,12 @@ def add_geometric_groups(df):
 
     mapping = {
         'EXTRUSION METALLIC': 'EXTRUSION',
-        'RECTANGULAR BAR METALLIC': 'RECTANGULAR',
-        'SHEET METALLIC': 'SHEET METAL',
-        'PLATE METALLIC': 'SHEET METAL',
-        'FORGING(RAW)': 'SHEET METAL',
-        'MESH METALLIC': 'SHEET METAL',
-        'STD. FLAT, SEMI FIN PARTS': 'SHEET METAL',
+        'RECTANGULAR BAR METALLIC': 'PLATE',
+        'SHEET METALLIC': 'SHEET',
+        'PLATE METALLIC': 'PLATE',
+        'FORGING(RAW)': 'PLATE',
+        'MESH METALLIC': 'PLATE',
+        'STD. FLAT, SEMI FIN PARTS': 'PLATE',
         'ROUND BAR METALLIC': 'ROUND',
         'ROUND TUBE METALLIC': 'ROUND'
     }
