@@ -97,11 +97,26 @@ def add_geometric_groups(df):
 
     return df
 
+
+def add_condition_change_feature(df):
+    """
+    STARTCONDITION ve FINALCONDITION sütunlarını karşılaştırır.
+    Farklılık varsa 1, aynıysa 0 değerini atar.
+    """
+    
+    df['IS_CONDITION_CHANGED'] = (
+            df['STARTCONDITION'].astype(str).str.strip() !=
+            df['FINALCONDITION'].astype(str).str.strip()
+    ).astype(int)
+
+    return df
+
 def add_features(df):
     df = df.copy()
 
     # Tüm alt fonksiyonları sırayla çalıştır
     df = add_new_material_classes(df)
     df = add_geometric_groups(df)
+    df = add_condition_change_feature(df)
 
     return df
