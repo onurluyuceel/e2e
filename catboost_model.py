@@ -7,7 +7,7 @@ def train_catboost_model(df, target='LEAD_TIME'):
     # 1. Seçili Özellikler
     features = [
         'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
-        'MATERIALTYPE_NEW', 'IS_CONDITION_CHANGED', 'DIMENSIONCODE',
+        'MATERIALTYPE_NEW', 'IS_CONDITION_CHANGED', 'GEOMETRIC_GROUP',
         'LENGTH', 'CALC_VOLUME'
     ]
 

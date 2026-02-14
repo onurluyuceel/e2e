@@ -22,6 +22,13 @@ def preprocess_data(df):
     for col in [c for c in numeric_cols if c in df.columns]:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
+    # --- ÖZEL KURAL: 1 EKİM TARİH DÜZENLEMESİ ---
+    threshold_date = pd.Timestamp(2024, 10, 1)
+
+    # Mantık: PO < 1 Ekim VE Barkod >= 1 Ekim ise PO'yu 1 Ekim yap
+    mask = (df['PO_CREATIONDATE'] < threshold_date) & (df['İLK_BARKOD_TARİH'] >= threshold_date)
+    df.loc[mask, 'PO_CREATIONDATE'] = threshold_date
+
     # --- STEP 2: ALL FILTERING & DELETIONS ---
     # A. Mandatory Column Check (Missing Data Deletion)
     initial_rows = len(df)
