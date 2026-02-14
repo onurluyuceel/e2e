@@ -20,7 +20,17 @@ def add_new_material_classes(df):
         '7050': 'Alüminyum',
         '7075': 'Alüminyum',
         '2024-CLAD': 'Alüminyum',
-        '5.1129-1': 'Polytetrafluoroethylene (PTFE)'
+        '5.1129-1': 'Polytetrafluoroethylene (PTFE)',
+        'AERMET 100': 'Çelik',
+        '1.7734': 'Çelik',
+        'AERO100': 'Çelik',
+        '17-7PH': 'Çelik',
+        '5052': 'Alüminyum',
+        '2024': 'Alüminyum',
+        '0.70 - 1.00C': 'Çelik',
+        'AISI 304': 'Çelik',
+        'SAE 4340': 'Çelik',
+        'AISI 321': 'Çelik'
     }
     
     # Yeni sütunu oluşturuyoruz. Eğer tabloda olmayan bir tip gelirse 'Diğer' olarak işaretler.
