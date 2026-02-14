@@ -73,7 +73,7 @@ def train_xgboost_model(df, target='LEAD_TIME'):
     print(f"  {'Test MAE':<22} : {final_test_mae:.4f} Gün")
     print(f"  {'Train MAE':<22} : {final_train_mae:.4f} Gün")
     print("=" * 40)
-    print(f"  {'HATA FARKI':<22} : %{mae_gap_percentage:.2f}")
+    print(f"  {'MAE FARKI (GAP)':<22} : %{mae_gap_percentage:.2f}")
     print("=" * 40)
 
     # 8. Özellik Önemi
