@@ -79,8 +79,8 @@ def train_xgboost_model(df, target='LEAD_TIME'):
     # 8. Özellik Önemi
     importance_df = pd.DataFrame({
         'feature': features,
-        'importance': model.feature_importances_
-    }).sort_values(by='importance', ascending=False)
+        'importance': model.feature_importances_ * 100
+    }).sort_values(by='importance', ascending=False).reset_index(drop=True)
 
     print("\n[ÖZELLİK ÖNEMİ]")
     print(importance_df)
