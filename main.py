@@ -3,6 +3,7 @@ from preprocessing import preprocess_data
 from new_features import add_features
 from analysis import run_all_analyses
 from catboost_model import train_catboost_model
+from xgboost_model import train_xgboost_model
 
 def main():
     
@@ -33,7 +34,8 @@ def main():
     run_all_analyses(df_featured)
 
     # 4. Eğitim
-    print("CatBoost model eğitimi başlatılıyor...")
+    print("Model eğitimi başlatılıyor...")
+    train_xgboost_model(df_featured, target='LEAD_TIME')
     train_catboost_model(df_featured)
 
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
