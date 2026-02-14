@@ -27,7 +27,7 @@ def train_catboost_model(df, target='LEAD_TIME'):
         learning_rate=0.03,
         depth=4,
         l2_leaf_reg=10,
-        eval_metric='R2',
+        eval_metric='RMSE',
         early_stopping_rounds=100,
         verbose=500,
         allow_writing_files=False
@@ -37,18 +37,34 @@ def train_catboost_model(df, target='LEAD_TIME'):
     model.fit(X_train, y_train, cat_features=cat_cols, eval_set=(X_test, y_test))
 
     # 5. Metrikler
-    preds = model.predict(X_test)
-    r2 = r2_score(y_test, preds)
-    rmse = np.sqrt(mean_squared_error(y_test, preds))
-    mae = mean_absolute_error(y_test, preds)
+    train_preds = model.predict(X_train)
+    test_preds = model.predict(X_test)
 
-    print(f"\n[PERFORMANS]")
-    print(f"R2 Score : {r2:.4f}")
-    print(f"RMSE     : {rmse:.4f}")
-    print(f"MAE      : {mae:.4f}")
+    r2_test = r2_score(y_test, test_preds)
+    rmse_test = np.sqrt(mean_squared_error(y_test, test_preds))
+    mae_train = mean_absolute_error(y_train, train_preds)
+    mae_test = mean_absolute_error(y_test, test_preds)
+
+    # Gap (Sapma) Hesabı:
+    if mae_train > 0:
+        mae_gap_percentage = ((mae_test - mae_train) / mae_train) * 100
+    else:
+        mae_gap_percentage = 0.0
+
+    print("\n" + "=" * 40)
+    print(f"{'[CATBOOST PERFORMANS RAPORU]':^45}")
+    print("=" * 40)
+    print(f"  {'R2 Score':<20} : {r2_test:.4f}")
+    print(f"  {'RMSE':<20} : {rmse_test:.4f}")
+    print(f"  {'Test MAE':<20} : {mae_test:.4f}")
+    print(f"  {'Train MAE':<20} : {mae_train:.4f}")
+    print("=" * 40)
+    print(f"  {'MAE FARKI (GAP)':<20} : %{mae_gap_percentage:.2f}")
+    print("=" * 40)
 
     # 6. Özellik Önemi
     print("\n[ÖZELLİK ÖNEMİ]")
-    print(model.get_feature_importance(prettified=True))
+    feature_importance = model.get_feature_importance(prettified=True)
+    print(feature_importance)
 
     return model
