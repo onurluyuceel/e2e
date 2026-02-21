@@ -3,6 +3,35 @@ import xgboost as xgb
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.cluster import KMeans
+
+def apply_leadtime_kmeans_clustering(X_train, X_test, y_train, n_clusters=4):
+    """
+    Sadece Train verisindeki Ortalama Lead Time değerlerini kullanarak
+    Tedarikçileri K-Means ile kümeler. (Veri sızıntısı yapmaz)
+    """
+    vendor_lt_mean = y_train.groupby(X_train['VENDORFINAL']).mean().to_frame(name='LEAD_TIME')
+
+    # 2. K-Means
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
+    vendor_lt_mean['VENDOR_CLUSTER'] = 'Cluster_' + kmeans.fit_predict(vendor_lt_mean[['LEAD_TIME']]).astype(str)
+
+    # Eşleştirme sözlüğü
+    cluster_mapping = vendor_lt_mean['VENDOR_CLUSTER'].to_dict()
+
+    # 3. Kopyalama
+    X_train_new = X_train.copy()
+    X_test_new = X_test.copy()
+
+    # 4. Map ve Fillna işlemlerini ZİNCİRLE (Tek Satırda)
+    X_train_new['VENDOR_GROUP'] = X_train_new['VENDORFINAL'].map(cluster_mapping).fillna('Unknown')
+    X_test_new['VENDOR_GROUP'] = X_test_new['VENDORFINAL'].map(cluster_mapping).fillna('Unknown')
+
+    # 5. Orijinal sütunu düşür
+    X_train_new.drop(columns=['VENDORFINAL'], inplace=True)
+    X_test_new.drop(columns=['VENDORFINAL'], inplace=True)
+
+    return X_train_new, X_test_new
 
 def train_xgboost_model(df, target='LEAD_TIME'):
     # 1. Özellik Seçimi
@@ -15,13 +44,24 @@ def train_xgboost_model(df, target='LEAD_TIME'):
     X = df[features].copy()
     y = df[target]
 
-    # 2. Kategorik Dönüşüm (XGBoost için Şart)
-    cat_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
-    for col in cat_cols:
-        X[col] = X[col].astype('category')
-
     # 3. Veri Bölme
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    # ---> K-Means ile Sadece Lead Time Üzerinden Gruplama <---
+    X_train, X_test = apply_leadtime_kmeans_clustering(X_train, X_test, y_train, n_clusters=4)
+
+    # 2. Kategorik Dönüşüm (XGBoost için Şart)
+    cat_cols = X_train.select_dtypes(include=['object', 'category']).columns.tolist()
+
+    for col in cat_cols:
+        # Numpy union1d ile Train ve Test'teki benzersiz değerlerin kümesini al (Çok Daha Hızlı)
+        train_uniques = X_train[col].dropna().unique()
+        test_uniques = X_test[col].dropna().unique()
+        all_categories = np.union1d(train_uniques, test_uniques)
+
+        cat_dtype = pd.CategoricalDtype(categories=all_categories, ordered=False)
+        X_train[col] = X_train[col].astype(cat_dtype)
+        X_test[col] = X_test[col].astype(cat_dtype)
 
     # 4. Model Parametreleri
     model = xgb.XGBRegressor(
@@ -77,8 +117,12 @@ def train_xgboost_model(df, target='LEAD_TIME'):
     print("=" * 40)
 
     # 8. Özellik Önemi
+    # DİKKAT: Artık features listesi yerine modelin gerçekten eğitildiği
+    # güncel sütun isimlerini (X_train.columns.tolist()) kullanıyoruz!
+    current_features = X_train.columns.tolist()
+
     importance_df = pd.DataFrame({
-        'feature': features,
+        'feature': current_features,
         'importance': model.feature_importances_ * 100
     }).sort_values(by='importance', ascending=False).reset_index(drop=True)
 
