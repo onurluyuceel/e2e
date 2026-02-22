@@ -17,10 +17,7 @@ def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=4):
 
     # 2. SADECE TRAIN verisi üzerinden Tedarikçi Profillerini Çıkar
     vendor_profiles = train_temp.groupby('VENDORFINAL').agg(
-        mean_lead_time=('LEAD_TIME', 'mean'),
-        std_lead_time=('LEAD_TIME', 'std'),  # İstikrar (Dalgalanma)
-        order_count=('VENDORFINAL', 'count'),  # Frekans (Hacim)
-        mean_order_qty=('ORDER_MIKTAR', 'mean')  # Sipariş Boyutu
+        mean_lead_time=('LEAD_TIME', 'mean')
     ).fillna(0)  # Sadece 1 siparişi olanların standart sapması NaN çıkar, onları 0 yapıyoruz.
 
     # 3. K-Means öncesi veriyi ÖLÇEKLENDİR (Farklı birimleri eşitlemek için ŞART)
