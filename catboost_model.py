@@ -1,7 +1,56 @@
 import numpy as np
+import pandas as pd
 from catboost import CatBoostRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=4):
+    """
+    Sadece Train verisindeki çoklu özellikleri kullanarak
+    Tedarikçileri K-Means ile kümeler. (Veri sızıntısı yapmaz)
+    """
+    # 1. Profil çıkarma için geçici train seti
+    train_temp = X_train.copy()
+    train_temp['LEAD_TIME'] = y_train
+
+    # 2. SADECE TRAIN verisi üzerinden Tedarikçi Profillerini Çıkar
+    vendor_profiles = train_temp.groupby('VENDORFINAL').agg(
+        mean_lead_time=('LEAD_TIME', 'mean'),
+        std_lead_time=('LEAD_TIME', 'std'),  # İstikrar (Dalgalanma)
+        order_count=('VENDORFINAL', 'count'),  # Frekans (Hacim)
+        mean_order_qty=('ORDER_MIKTAR', 'mean')  # Sipariş Boyutu
+    ).fillna(0)  # Sadece 1 siparişi olanların standart sapması NaN çıkar, onları 0 yapıyoruz.
+
+    # 3. K-Means öncesi veriyi ÖLÇEKLENDİR (Farklı birimleri eşitlemek için ŞART)
+    scaler = StandardScaler()
+    scaled_profiles = scaler.fit_transform(vendor_profiles)
+
+    # 4. K-Means Modelini eğit
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
+    vendor_profiles['VENDOR_CLUSTER'] = 'Cluster_' + kmeans.fit_predict(scaled_profiles).astype(str)
+
+    # 5. Eşleştirme sözlüğünü oluştur
+    cluster_mapping = vendor_profiles['VENDOR_CLUSTER'].to_dict()
+
+    # 6. Kümeleri Train ve Test setlerine uygula (Map)
+    X_train_new = X_train.copy()
+    X_test_new = X_test.copy()
+
+    X_train_new['VENDOR_GROUP'] = X_train_new['VENDORFINAL'].map(cluster_mapping).fillna('Unknown')
+    X_test_new['VENDOR_GROUP'] = X_test_new['VENDORFINAL'].map(cluster_mapping).fillna('Unknown')
+
+    # 7. Orijinal VENDORFINAL sütununu artık silebiliriz
+    X_train_new.drop(columns=['VENDORFINAL'], inplace=True)
+    X_test_new.drop(columns=['VENDORFINAL'], inplace=True)
+
+    # Kümelerin karakteristiğini görmek için terminale bastırıyoruz
+    print("\n--- K-MEANS TEDARİKÇİ PROFİLLERİ (KÜME ÖZETİ) ---")
+    print(vendor_profiles.groupby('VENDOR_CLUSTER').mean().round(2))
+    print("--------------------------------------------------\n")
+
+    return X_train_new, X_test_new
 
 def train_catboost_model(df, target='LEAD_TIME'):
     # 1. Seçili Özellikler
@@ -11,17 +60,26 @@ def train_catboost_model(df, target='LEAD_TIME'):
         'LENGTH', 'CALC_VOLUME'
     ]
 
-    X = df[features]
+    # Hata almamak için veriyi kopyalıyoruz
+    X = df[features].copy()
     y = df[target]
 
-    # Kategorik sütunları otomatik belirle
-    cat_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
-
-    # 2. Veri Bölme
+    # 2. Veri Bölme (Sızıntıyı önlemek için İlk sıraya alındı)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-    # 3. Model Parametreleri
+    # ---> YENİ: ÇOK BOYUTLU PROFİLLEME İLE K-MEANS <---
+    X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=4)
 
+    # 3. Kategorik Sütunları Belirleme ve Tip Dönüşümü
+    # (Bunu K-Means'ten SONRA yapıyoruz çünkü VENDORFINAL gitti, VENDOR_GROUP geldi)
+    cat_cols = X_train.select_dtypes(include=['object', 'category']).columns.tolist()
+
+    # CatBoost için kategorik sütunların sadece 'string' tipinde olması yeterlidir.
+    for col in cat_cols:
+        X_train[col] = X_train[col].astype(str)
+        X_test[col] = X_test[col].astype(str)
+
+    # 4. Model Parametreleri
     model = CatBoostRegressor(
         iterations=3000,
         learning_rate=0.03,
@@ -33,10 +91,10 @@ def train_catboost_model(df, target='LEAD_TIME'):
         allow_writing_files=False
     )
 
-    # 4. Eğitim
+    # 5. Eğitim
     model.fit(X_train, y_train, cat_features=cat_cols, eval_set=(X_test, y_test))
 
-    # 5. Metrikler
+    # 6. Metrikler
     train_preds = model.predict(X_train)
     test_preds = model.predict(X_test)
 
@@ -62,7 +120,7 @@ def train_catboost_model(df, target='LEAD_TIME'):
     print(f"  {'MAE FARKI (GAP)':<20} : %{mae_gap_percentage:.2f}")
     print("=" * 40)
 
-    # 6. Özellik Önemi
+    # 7. Özellik Önemi
     print("\n[ÖZELLİK ÖNEMİ]")
     feature_importance = model.get_feature_importance(prettified=True)
     print(feature_importance)
