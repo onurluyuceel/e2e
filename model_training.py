@@ -6,6 +6,8 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=4):
     """
@@ -46,6 +48,29 @@ def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=4):
 
     return X_train, X_test
 
+def plot_feature_importance(importance_df, model_name):
+    """Özellik önemlerini ortalama ve standart sapma hata çubuklarıyla çizer."""
+    plt.figure(figsize=(10, 8))
+
+    # En önemli ilk 20 özelliği al ve ters çevir (en yüksek değer en üstte görünsün)
+    top_features = importance_df.head(20).copy()
+    top_features = top_features.sort_values(by='Importance_Mean', ascending=True)
+
+    # Matplotlib ile yatay bar çizimi (Hata çubukları ile kusursuz çalışır)
+    plt.barh(
+        y=top_features['Feature'],
+        width=top_features['Importance_Mean'],
+        xerr=top_features['Importance_Std'],
+        color='teal',
+        capsize=5,       # Hata çubuklarının ucundaki minik çizgiler
+        edgecolor='black'
+    )
+
+    plt.title(f'Feature Importance - {model_name.upper()} (Mean ± Std over K-Folds)')
+    plt.xlabel('Importance Score')
+    plt.ylabel('Features')
+    plt.tight_layout()
+    plt.show()
 
 def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=5):
     """
@@ -76,6 +101,9 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
         'test_mae': [], 'train_mae': [],
         'test_r2': [], 'test_rmse': [], 'gap': []
     }
+    # Feature Importance Değişkenleri
+    fold_importances = []
+    feature_names = None
 
     # 3. CROSS-VALIDATION DÖNGÜSÜ
     # Her bir 'fold' (katman) için veriyi %80 Eğitim - %20 Test olarak ayırıp işlemleri başlatıyoruz.
@@ -150,6 +178,16 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
             f_train_mae = mean_absolute_error(y_train, model.predict(X_train))
             f_test_mae = mean_absolute_error(y_test, model.predict(X_test))
 
+        # Özellik Önemlerini Kaydetme
+        if fold == 0:
+            feature_names = X_train.columns.tolist()
+
+        if hasattr(model, 'feature_importances_'):
+            raw_importances = model.feature_importances_
+            # Modellerin farklı formatlarını eşitlemek için toplamı 100'e (Yüzdeye) zorluyoruz
+            normalized_importances = (raw_importances / raw_importances.sum()) * 100
+            fold_importances.append(normalized_importances)
+
         # Fold Metriklerini Kaydetme
         preds = model.predict(X_test)
         f_r2 = r2_score(y_test, preds)
@@ -178,5 +216,21 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
     print("=" * 55)
     print(f"  {'MAE FARKI (GAP) (%)':<25} : %{np.mean(metrics['gap']):.2f} ± %{np.std(metrics['gap']):.2f}")
     print("=" * 55)
+
+    # FEATURE IMPORTANCE HESAPLAMA VE ÇİZDİRME
+    if fold_importances:
+        print("\nFeature Importance grafiği hesaplanıyor ve açılıyor...")
+
+        avg_importance = np.mean(fold_importances, axis=0)
+        std_importance = np.std(fold_importances, axis=0)
+
+        importance_df = pd.DataFrame({
+            'Feature': feature_names,
+            'Importance_Mean': avg_importance,
+            'Importance_Std': std_importance
+        }).sort_values(by='Importance_Mean', ascending=False)
+
+        # Çizim fonksiyonunu çağırıyoruz
+        plot_feature_importance(importance_df, model_type)
 
     return model
