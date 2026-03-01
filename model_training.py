@@ -165,16 +165,18 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
         # Fold içindeki metrikleri yazdıran güncellenmiş satır:
         print(f" Fold {fold + 1} | Test MAE: {f_test_mae:.2f} | Train MAE: {f_train_mae:.2f} | R2: {f_r2:.4f} | RMSE: {f_rmse:.2f} | Gap: %{f_gap:.2f}")
 
-    # Raporlama Kısmı (Öncekiyle aynı)
-    print("\n" + "=" * 45)
+    # Raporlama Kısmı
+    print("\n" + "=" * 55)
     print(f"[{model_type.upper()} CV NİHAİ RAPOR]")
-    print("=" * 45)
-    print(f"  {'R2 Score (Avg)':<22} : {np.mean(metrics['test_r2']):.4f}")
-    print(f"  {'RMSE (Avg)':<22} : {np.mean(metrics['test_rmse']):.4f}")
-    print(f"  {'Test MAE (Avg)':<22} : {np.mean(metrics['test_mae']):.4f}")
-    print(f"  {'Train MAE (Avg)':<22} : {np.mean(metrics['train_mae']):.4f}")
-    print("=" * 45)
-    print(f"  {'MAE FARKI (GAP) (Avg)':<22} : %{np.mean(metrics['gap']):.2f}")
-    print("=" * 45)
+    print("=" * 55)
+    print(f"  {'R2 Score (Avg ± Std)':<25} : {np.mean(metrics['test_r2']):.4f} ± {np.std(metrics['test_r2']):.4f}")
+    print(f"  {'RMSE (Avg ± Std)':<25} : {np.mean(metrics['test_rmse']):.4f} ± {np.std(metrics['test_rmse']):.4f}")
+    print(
+        f"  {'Test MAE (Avg ± Std)':<25} : {np.mean(metrics['test_mae']):.4f} ± {np.std(metrics['test_mae']):.4f}")
+    print(
+        f"  {'Train MAE (Avg ± Std)':<25} : {np.mean(metrics['train_mae']):.4f} ± {np.std(metrics['train_mae']):.4f}")
+    print("=" * 55)
+    print(f"  {'MAE FARKI (GAP) (%)':<25} : %{np.mean(metrics['gap']):.2f} ± %{np.std(metrics['gap']):.2f}")
+    print("=" * 55)
 
     return model
