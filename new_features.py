@@ -50,7 +50,7 @@ def add_geometric_groups(df):
         'ROUND BAR METALLIC': 'ROUND',
         'ROUND TUBE METALLIC': 'ROUND'
     }
-    df['GEOMETRIC_GROUP'] = df['DIMENSIONCODE'].map(mapping)
+    df['GEOMETRIC_GROUP'] = df['DIMENSIONCODE'].map(mapping).fillna('DIGER')
 
     # Adım 2: Eksik Veri Doldurma (Gage ve Width için 50 kuralı)
     non_round_mask = df['GEOMETRIC_GROUP'] != 'ROUND'
