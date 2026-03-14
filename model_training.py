@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=4):
+def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=5):
     """
     Tedarikçi bazlı gruplamayı veri sızıntısı olmadan yapar.
     """
