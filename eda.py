@@ -5,7 +5,7 @@ import pandas as pd
 
 
 # 1. Excel dosyanızı okuyun
-dosya_yolu = 'gkb_hrb.xlsx'
+dosya_yolu = 'datav2.xlsx'
 df = pd.read_excel(dosya_yolu)
 
 # 2. Frekans tablosunu oluşturun ve X ekseninin düzgün olması için miktara göre sıralayın
@@ -111,37 +111,62 @@ print(vendor_toplam_miktar)
 
 # 2. Sizin verdiğiniz malzeme sözlüğü
 material_map = {
-   '6AL-4V (AB-1)': 'Titanyum',
-   'TI-6AL-4V': 'Titanyum',
-   '321': 'Çelik',
-   '15-5PH': 'Çelik',
-   '17-HPH': 'Çelik',
-   'AISI 301': 'Çelik',
-   'AISI321': 'Çelik',
-   'CRES 304': 'Çelik',
-   'PH13-8MO': 'Çelik',
-   'AISI 41410': 'Çelik',
-   'INCONEL 625': 'Nikel-krom',
-   'INCONEL 718': 'Nikel-krom',
-   'C63000': 'Nikel-Alüminyum-Bronze',
-   'C64200': 'Alüminyum-Bronze',
-   '2050': 'Alüminyum',
-   '6061': 'Alüminyum',
-   '7050': 'Alüminyum',
-   '7075': 'Alüminyum',
-   '2024-CLAD': 'Alüminyum',
-   '5.1129-1': 'Polytetrafluoroethylene (PTFE)',
-   'AERMET 100': 'Çelik',
-   '1.7734': 'Çelik',
-   'AERO100': 'Çelik',
-   '17-7PH': 'Çelik',
-   '5052': 'Alüminyum',
-   '2024': 'Alüminyum',
-   '0.70 - 1.00C': 'Çelik',
-   'AISI 304': 'Çelik',
-   'SAE 4340': 'Çelik',
-   'AISI 321': 'Çelik'
-}
+        '6AL-4V (AB-1)': 'Titanyum',
+        'TI-6AL-4V': 'Titanyum',
+        '321': 'Çelik',
+        '15-5PH': 'Çelik',
+        '17-HPH': 'Çelik',
+        'AISI 301': 'Çelik',
+        'AISI321': 'Çelik',
+        'CRES 304': 'Çelik',
+        'PH13-8MO': 'Çelik',
+        'AISI 41410': 'Çelik',
+        'INCONEL 625': 'Nikel-krom',
+        'INCONEL 718': 'Nikel-krom',
+        'C63000': 'Nikel-Alüminyum-Bronze',
+        'C64200': 'Alüminyum-Bronze',
+        '2050': 'Alüminyum',
+        '6061': 'Alüminyum',
+        '7050': 'Alüminyum',
+        '7075': 'Alüminyum',
+        '2024-CLAD': 'Alüminyum',
+        '5.1129-1': 'Polytetrafluoroethylene (PTFE)',
+        'AERMET 100': 'Çelik',
+        '1.7734': 'Çelik',
+        'AERO100': 'Çelik',
+        '17-7PH': 'Çelik',
+        '5052': 'Alüminyum',
+        '2024': 'Alüminyum',
+        '0.70 - 1.00C': 'Çelik',
+        'AISI 304': 'Çelik',
+        'SAE 4340': 'Çelik',
+        'AISI 321': 'Çelik',
+        '17-4PH': 'Çelik',
+        'C10100': 'Bakır',
+        'AISI 1010': 'Çelik',
+        '7075-CLAD': 'Alüminyum',
+        'TYPE 1': 'Tungsten',
+        'AISI 4340': 'Çelik',
+        'CRES 304 (4X4)': 'Çelik',
+        'TUNGSTEN': 'Tungsten',
+        'CP-2': 'Titanyum',
+        '93 PB - 6.5 SB - 0.5 SN': 'Kurşun',
+        '32CDV13': 'Çelik',
+        'AISI 304 (D:0.023")': 'Çelik',
+        'PYROWEAR 53': 'Çelik',
+        '1.7734 (F-0225)': 'Çelik',
+        'NYLATRON GS': 'Plastik',
+        '9310': 'Çelik',
+        'TI-3AL-2.5V': 'Titanyum',
+        '1': 'Plastik',
+        'A-286': 'Nikel Alaşım',
+        'SAE 4130': 'Çelik',
+        '2124': 'Alüminyum',
+        '4340': 'Çelik',
+        'C5': 'Çelik',
+        'AISI 302': 'Çelik',
+        '5.1129.20': 'Teflon PTFE'
+    }
 
 
 # YENİ ADIM: Sözlükteki anahtarları eşleşmeye hazır, standart ve temiz bir hale getirelim
@@ -223,7 +248,12 @@ mapping = {
    'MESH METALLIC': 'PLATE',
    'STD. FLAT, SEMI FIN PARTS': 'PLATE',
    'ROUND BAR METALLIC': 'ROUND',
-   'ROUND TUBE METALLIC': 'ROUND'
+   'ROUND TUBE METALLIC': 'ROUND',
+   'SHEET&PLATE NON METALLIC': 'PLATE',
+   'RECTANGULAR TUBE METALLIC': 'EXTRUSION',
+   'SPRING WIRE': 'EXTRUSION',
+   'ROD NON METALLIC': 'ROUND',
+   'SHIM METALLIC': 'SHEET'
 }
 
 

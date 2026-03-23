@@ -73,7 +73,12 @@ def add_geometric_groups(df):
         'MESH METALLIC': 'PLATE',
         'STD. FLAT, SEMI FIN PARTS': 'PLATE',
         'ROUND BAR METALLIC': 'ROUND',
-        'ROUND TUBE METALLIC': 'ROUND'
+        'ROUND TUBE METALLIC': 'ROUND',
+        'SHEET&PLATE NON METALLIC': 'PLATE',
+        'RECTANGULAR TUBE METALLIC': 'EXTRUSION',
+        'SPRING WIRE': 'EXTRUSION',
+        'ROD NON METALLIC': 'ROUND',
+        'SHIM METALLIC': 'SHEET'
     }
     df['GEOMETRIC_GROUP'] = df['DIMENSIONCODE'].map(mapping).fillna('DIGER')
 
