@@ -30,7 +30,32 @@ def add_new_material_classes(df):
         '0.70 - 1.00C': 'Çelik',
         'AISI 304': 'Çelik',
         'SAE 4340': 'Çelik',
-        'AISI 321': 'Çelik'
+        'AISI 321': 'Çelik',
+        '17-4PH': 'Çelik',
+        'C10100': 'Bakır',
+        'AISI 1010': 'Çelik',
+        '7075-CLAD': 'Alüminyum',
+        'TYPE 1': 'Tungsten',
+        'AISI 4340': 'Çelik',
+        'CRES 304 (4X4)': 'Çelik',
+        'TUNGSTEN': 'Tungsten',
+        'CP-2': 'Titanyum',
+        '93 PB - 6.5 SB - 0.5 SN': 'Kurşun',
+        '32CDV13': 'Çelik',
+        'AISI 304 (D:0.023")': 'Çelik',
+        'PYROWEAR 53': 'Çelik',
+        '1.7734 (F-0225)': 'Çelik',
+        'NYLATRON GS': 'Plastik',
+        '9310': 'Çelik',
+        'TI-3AL-2.5V': 'Titanyum',
+        '1': 'Plastik',
+        'A-286': 'Nikel Alaşım',
+        'SAE 4130': 'Çelik',
+        '2124': 'Alüminyum',
+        '4340': 'Çelik',
+        'C5': 'Çelik',
+        'AISI 302': 'Çelik',
+        '5.1129.20': 'Teflon PTFE'
     }
     
     # Yeni sütunu oluşturuyoruz. Eğer tabloda olmayan bir tip gelirse 'Diğer' olarak işaretler.
