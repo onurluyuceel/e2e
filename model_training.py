@@ -7,7 +7,9 @@ from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
-import seaborn as sns
+import optuna
+import sys
+import os
 
 def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=5):
     """
@@ -72,7 +74,7 @@ def plot_feature_importance(importance_df, model_name):
     plt.tight_layout()
     plt.show()
 
-def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=5):
+def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=5, xgb_params=None):
     """
     Belirlenen özellikler üzerinden K-Fold Çapraz Doğrulama (Cross-Validation) yapar.
     """
@@ -132,25 +134,43 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
                 # XGBoost NaN kategorik değerleri "bilinmeyen" olarak işleyebilir.
                 X_test[col] = pd.Categorical(X_test[col], categories=X_train[col].cat.categories)
 
-            # --- SENİN PARAMETRELERİNİN ENTEGRASYONU ---
-            model = xgb.XGBRegressor(
-                n_estimators=3000,  # Daha fazla ağaç
-                learning_rate=0.01,  # Daha yavaş ve dikkatli öğrenme
-                max_depth=4,  # Sığ ağaçlar (Overfitting önler)
-                reg_lambda=120,  # L2 Regularization
-                reg_alpha=10,  # L1 Regularization
-                min_child_weight=10,  # Dallar arası minimum ağırlık
-                gamma=2,  # Dallanma için gereken minimum azalma
-                subsample=0.6,  # Verinin %60'ını rastgele seç
-                colsample_bytree=0.6,  # Özelliklerin %60'ını rastgele seç
-                objective='reg:squarederror',
-                eval_metric='mae',
-                early_stopping_rounds=100,  # Gelişme durursa eğitimi kes
-                enable_categorical=True,  # Kategorik desteği
-                tree_method='hist',  # Hızlı eğitim metodu
-                random_state=42
-                )
-            model.fit(X_train, y_train, eval_set=[(X_train, y_train), (X_test, y_test)], verbose=500)
+            # --- PARAMETRE ENTEGRASYONU ---
+            if xgb_params is None:
+                # Dışarıdan parametre gelmezse varsayılan ayarlarını kullan
+                xgb_params = {
+                    'n_estimators': 3000,
+                    'learning_rate': 0.01,
+                    'max_depth': 4,
+                    'reg_lambda': 120,
+                    'reg_alpha': 10,
+                    'min_child_weight': 10,
+                    'gamma': 2,
+                    'subsample': 0.6,
+                    'colsample_bytree': 0.6,
+                    'objective': 'reg:squarederror',
+                    'eval_metric': 'mae',
+                    'early_stopping_rounds': 100,
+                    'enable_categorical': True,
+                    'tree_method': 'hist',
+                    'random_state': 42
+                }
+            else:
+                # EĞER DIŞARIDAN (OPTUNA'DAN) PARAMETRE GELDİYSE BİLE,
+                # ZORUNLU SABİT AYARLARI BU SÖZLÜĞE EKLE
+                xgb_params['enable_categorical'] = True
+                xgb_params['tree_method'] = 'hist'
+                xgb_params['objective'] = 'reg:squarederror'
+                xgb_params['eval_metric'] = 'mae'
+                xgb_params['random_state'] = 42
+
+            # Parametreleri modele veriyoruz
+            model = xgb.XGBRegressor(**xgb_params)
+
+            fit_params = {'verbose': 500}
+            if 'early_stopping_rounds' not in xgb_params:
+                model.set_params(early_stopping_rounds=100)
+
+            model.fit(X_train, y_train, eval_set=[(X_train, y_train), (X_test, y_test)], **fit_params)
 
             results = model.evals_result()
             f_train_mae = results['validation_0']['mae'][-1]
@@ -234,3 +254,67 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
         plot_feature_importance(importance_df, model_type)
 
     return model
+
+def optimize_xgboost(df, target='LEAD_TIME', n_splits=5, n_trials=50):
+    """
+    Optuna kullanarak XGBoost hiperparametrelerini K-Fold CV ile optimize eder.
+    """
+    features = [
+        'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
+        'MATERIALTYPE_NEW', 'IS_CONDITION_CHANGED', 'GEOMETRIC_GROUP',
+        'LENGTH', 'CALC_VOLUME'
+    ]
+
+    X = df[[c for c in features if c in df.columns]].copy()
+    y = df[target]
+
+    def objective(trial):
+        params = {
+            'n_estimators': trial.suggest_int('n_estimators', 1000, 3000, step=500),
+            'learning_rate': trial.suggest_float('learning_rate', 0.005, 0.1, log=True),
+            'max_depth': trial.suggest_int('max_depth', 3, 7),
+            'reg_lambda': trial.suggest_float('reg_lambda', 0, 50),
+            'reg_alpha': trial.suggest_float('reg_alpha', 0, 20),
+            'min_child_weight': trial.suggest_int('min_child_weight', 5, 20),
+            'subsample': trial.suggest_float('subsample', 0.5, 0.9),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 0.9),
+            'objective': 'reg:squarederror',
+            'eval_metric': 'mae',
+            'enable_categorical': True,
+            'tree_method': 'hist',
+            'random_state': 42
+        }
+
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+        fold_maes = []
+
+        for train_idx, test_idx in kf.split(X):
+            X_train, X_test = X.iloc[train_idx].copy(), X.iloc[test_idx].copy()
+            y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+            # Veri sızıntısını önlemek için her fold'da K-Means çalışır
+            X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train)
+
+            cat_cols = X_train.select_dtypes(include=['object']).columns
+            for col in cat_cols:
+                X_train[col] = X_train[col].astype('category')
+                X_test[col] = pd.Categorical(X_test[col], categories=X_train[col].cat.categories)
+
+            model = xgb.XGBRegressor(**params)
+            model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
+
+            preds = model.predict(X_test)
+            fold_maes.append(mean_absolute_error(y_test, preds))
+
+        return np.mean(fold_maes)
+
+    # Aşağıdaki kısımlar "def optimize_xgboost" hizasında olmalı (1 TAB içeride)
+    old_stdout = sys.stdout
+    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+
+    study = optuna.create_study(direction='minimize')
+    study.optimize(objective, n_trials=n_trials)
+
+    sys.stdout = old_stdout
+
+    return study.best_params

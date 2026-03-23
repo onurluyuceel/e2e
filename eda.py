@@ -5,7 +5,7 @@ import pandas as pd
 
 
 # 1. Excel dosyanızı okuyun
-dosya_yolu = 'gkb_hrb.xlsx'
+dosya_yolu = 'data.xlsx'
 df = pd.read_excel(dosya_yolu)
 
 # 2. Frekans tablosunu oluşturun ve X ekseninin düzgün olması için miktara göre sıralayın
