@@ -135,14 +135,14 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
             # --- SENİN PARAMETRELERİNİN ENTEGRASYONU ---
             model = xgb.XGBRegressor(
                 n_estimators=3000,  # Daha fazla ağaç
-                learning_rate=0.01,  # Daha yavaş ve dikkatli öğrenme
-                max_depth=4,  # Sığ ağaçlar (Overfitting önler)
-                reg_lambda=120,  # L2 Regularization
-                reg_alpha=10,  # L1 Regularization
-                min_child_weight=10,  # Dallar arası minimum ağırlık
+                learning_rate=0.1,  # Daha yavaş ve dikkatli öğrenme
+                max_depth=7,  # Sığ ağaçlar (Overfitting önler)
+                reg_lambda=15,  # L2 Regularization
+                reg_alpha=8,  # L1 Regularization
+                min_child_weight=6,  # Dallar arası minimum ağırlık
                 gamma=2,  # Dallanma için gereken minimum azalma
-                subsample=0.6,  # Verinin %60'ını rastgele seç
-                colsample_bytree=0.6,  # Özelliklerin %60'ını rastgele seç
+                subsample=0.85,  # Verinin %60'ını rastgele seç
+                colsample_bytree=0.8,  # Özelliklerin %60'ını rastgele seç
                 objective='reg:squarederror',
                 eval_metric='mae',
                 early_stopping_rounds=100,  # Gelişme durursa eğitimi kes
