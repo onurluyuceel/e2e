@@ -68,6 +68,86 @@ def categorical_feature_correlation(df):
     plt.tight_layout()
     plt.show()
 
+
+def correlation_ratio(categories, measurements):
+    """Kategorik ve Sayısal değişkenler arasındaki ilişkiyi (ETA) hesaplar."""
+
+    # --- DÜZELTME: Pandas index uyuşmazlığını önlemek için saf numpy dizisine çeviriyoruz ---
+    categories = np.array(categories)
+    measurements = np.array(measurements)
+    # ----------------------------------------------------------------------------------------
+
+    fcat, _ = pd.factorize(categories)
+    cat_num = np.max(fcat) + 1
+    y_avg_array = np.zeros(cat_num)
+    n_array = np.zeros(cat_num)
+
+    for i in range(0, cat_num):
+        cat_measures = measurements[np.argwhere(fcat == i).flatten()]
+        n_array[i] = len(cat_measures)
+        y_avg_array[i] = np.average(cat_measures)
+
+    y_total_avg = np.sum(np.multiply(y_avg_array, n_array)) / np.sum(n_array)
+    numerator = np.sum(np.multiply(n_array, np.power(np.subtract(y_avg_array, y_total_avg), 2)))
+    denominator = np.sum(np.power(np.subtract(measurements, y_total_avg), 2))
+
+    if numerator == 0 or denominator == 0:
+        return 0.0
+    return np.sqrt(numerator / denominator)
+
+
+def plot_unified_correlation(X, y, target_name='LEAD_TIME'):
+    """Tüm seçilmiş özelliklerin (Kategorik + Sayısal) bütüncül ısı haritasını çizer."""
+    df_plot = X.copy()
+    df_plot[target_name] = y
+
+    cols = df_plot.columns
+    corr_matrix = pd.DataFrame(index=cols, columns=cols, dtype=float)
+
+    print("\n[ANALİZ] Bütüncül Korelasyon Matrisi hesaplanıyor (Pearson, Cramer's V, ETA)...")
+
+    for i in range(len(cols)):
+        for j in range(len(cols)):
+            col1 = cols[i]
+            col2 = cols[j]
+
+            if i == j:
+                corr_matrix.loc[col1, col2] = 1.0
+                continue
+
+            valid_idx = df_plot[[col1, col2]].dropna().index
+            s1 = df_plot.loc[valid_idx, col1]
+            s2 = df_plot.loc[valid_idx, col2]
+
+            if len(s1) == 0:
+                corr_matrix.loc[col1, col2] = 0.0
+                continue
+
+            is_num1 = pd.api.types.is_numeric_dtype(s1)
+            is_num2 = pd.api.types.is_numeric_dtype(s2)
+
+            # 1. Sayısal vs Sayısal (Pearson)
+            if is_num1 and is_num2:
+                corr = s1.corr(s2)
+            # 2. Kategorik vs Kategorik (Cramer's V)
+            elif not is_num1 and not is_num2:
+                corr = cramers_v(s1, s2)
+            # 3. Sayısal vs Kategorik (Correlation Ratio)
+            else:
+                corr = correlation_ratio(s2, s1) if is_num1 else correlation_ratio(s1, s2)
+
+            corr_matrix.loc[col1, col2] = corr
+
+    plt.figure(figsize=(14, 12))
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='YlGnBu', center=0,
+                vmin=0, vmax=1, square=True, linewidths=.5)
+
+    plt.title("Karma Özellikler Korelasyon Haritası (Sayısal & Kategorik)", pad=20, size=14)
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    plt.show()
+
 def run_all_analyses(df):
 
     numeric_feature_correlation(df)

@@ -27,11 +27,11 @@ def main():
     # Özellik eklenmiş veriyi kaydet
     df_featured.to_excel('data_with_features.xlsx', index=False)
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
-    """
+
     # 3. Analizler
     print("Analizler başlatılıyor...")
     run_all_analyses(df_featured)
-    """
+
     # 4. Eğitim
     print("Model eğitimi başlatılıyor...")
     xgb_final_model = run_cross_validation(df_featured, model_type='xgboost', target='LEAD_TIME', n_splits=5)
