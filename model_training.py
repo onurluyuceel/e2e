@@ -81,9 +81,10 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
     # Modelin öğrenmesini istediğimiz "en etkili" 9 değişkeni buraya tanımlıyoruz.
     # NOT: VENDORFINAL'ı buraya ekledik çünkü K-Means fonksiyonu bu ismi kullanarak VENDOR_GROUP türetecek.
     features = [
-        'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
-        'MATERIALTYPE_NEW', 'IS_CONDITION_CHANGED', 'GEOMETRIC_GROUP',
-        'LENGTH', 'CALC_VOLUME'
+        'VENDORFINAL', 'MATERIALTYPE_NEW', 'MAINPART GRUP',
+        'CALC_VOLUME', 'LENGTH', 'LOAD_ITEM',
+        'Yönetici Etkisi', 'ORDER_MIKTAR', 'YUZEY_ISLEM',
+        'IDEAL_LEAD_TIME', 'PLANT', 'GEOMETRIC_GROUP'
     ]
 
     # Sadece seçilen özellikleri ve hedef değişkeni (Lead Time) veriden ayırıyoruz.

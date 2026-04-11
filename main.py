@@ -8,7 +8,7 @@ def main():
     
     # 1. Veri Yükleme ve Temizleme (Preprocessing)
     print("Veri yükleniyor ve temizleniyor...")
-    df = pd.read_excel('datav2.xlsx')
+    df = pd.read_excel('datav3.xlsx')
     df = preprocess_data(df)
 
     # Temizlenmiş veriyi yedek olarak kaydet
