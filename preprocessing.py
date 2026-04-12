@@ -2,13 +2,15 @@ import pandas as pd
 import numpy as np
 
 def preprocess_data(df):
+
+    df = df.copy()  # Güvenlik önlemi
     # --- STEP 0: INITIAL DROPS ---
-    drop_initially = ['PO_KEY', 'LEAD_TIME_START_DATE', 'LEAD_TIME_FINISH_DATE']
+    drop_initially = ['LOAD_ITEM1', 'PO_KEY', 'MAINPART', 'Yönetici Etkisi1', 'LEAD_TIME_START_DATE', 'LEAD_TIME_FINISH_DATE', 'MATERIALSPEC', 'STARTCONDITION', 'FINALCONDITION', 'SDR', 'BLRSZ', 'WOR', 'SCH', 'TAR', 'DET', 'DOC', 'FMP', 'TKM', 'HLD',
+                    'CLS', 'ARL', 'MIK', 'OKS', 'INT', 'NPO', 'OSI', 'PKM', 'ITP', 'ADR', 'KPY']
     df = df.drop(columns=[c for c in drop_initially if c in df.columns])
 
     # --- STEP 1: TYPE CONVERSIONS ---
-    string_cols = ['LOAD_ITEM', 'PLANT', 'MAINPART', 'VENDORFINAL',
-                   'MATERIALSPEC', 'MATERIALTYPE', 'STARTCONDITION', 'FINALCONDITION', 'DIMENSIONCODE']
+    string_cols = ['PLANT', 'MAINPART GRUP', 'VENDORFINAL', 'MATERIALTYPE', 'DIMENSIONCODE']
     for col in [c for c in string_cols if c in df.columns]:
         df[col] = df[col].astype(str).replace(['nan', 'None', ''], np.nan)
 
@@ -16,9 +18,7 @@ def preprocess_data(df):
     for col in [c for c in date_cols if c in df.columns]:
         df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
 
-    numeric_cols = ['SDR', 'BLRSZ', 'WOR', 'SCH', 'TAR', 'DET', 'DOC', 'FMP', 'TKM', 'HLD',
-                    'CLS', 'ARL', 'MIK', 'OKS', 'INT', 'NPO', 'OSI', 'PKM', 'ITP', 'ADR',
-                    'ORDER_MIKTAR', 'GAGE', 'WIDTH', 'LENGTH', 'OUTERDIAMETER']
+    numeric_cols = ['LOAD_ITEM', 'ORDER_MIKTAR', 'Yönetici Etkisi', 'GAGE', 'WIDTH', 'LENGTH', 'OUTERDIAMETER', 'YUZEY_ISLEM', 'IDEAL_LEAD_TIME']
     for col in [c for c in numeric_cols if c in df.columns]:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
