@@ -1,8 +1,6 @@
 import pandas as pd
 from preprocessing import preprocess_data
 from new_features import add_features
-from analysis import run_all_analyses
-from model_training import run_cross_validation
 from model_training import run_cross_validation, optimize_xgboost
 
 def main():
@@ -29,10 +27,6 @@ def main():
     df_featured.to_excel('data_with_features.xlsx', index=False)
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
 
-    # 3. Analizler
-    print("Analizler başlatılıyor...")
-    run_all_analyses(df_featured)
-
     # 4. Eğitim ve Optimizasyon
     print("\nOptuna ile XGBoost hiperparametre optimizasyonu başlatılıyor...")
     # n_trials=10 dedik (10 farklı parametre seti deneyecek). İstersen artırabilirsin.
@@ -44,9 +38,6 @@ def main():
 
     xgb_final_model = run_cross_validation(df_featured, model_type='xgboost', target='LEAD_TIME', n_splits=5,xgb_params=best_xgb_params)
 
-    """
-    cat_final_model = run_cross_validation(df_featured, model_type='catboost', target='LEAD_TIME', n_splits=5)
-    """
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
 if __name__ == "__main__":
