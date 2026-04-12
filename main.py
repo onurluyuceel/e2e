@@ -2,14 +2,13 @@ import pandas as pd
 from preprocessing import preprocess_data
 from new_features import add_features
 from analysis import run_all_analyses
-from catboost_model import train_catboost_model
-from xgboost_model import train_xgboost_model
+from model_training import run_cross_validation
 
 def main():
     
     # 1. Veri Yükleme ve Temizleme (Preprocessing)
     print("Veri yükleniyor ve temizleniyor...")
-    df = pd.read_excel('data.xlsx')
+    df = pd.read_excel('datav3.xlsx')
     df = preprocess_data(df)
 
     # Temizlenmiş veriyi yedek olarak kaydet
@@ -35,9 +34,10 @@ def main():
 
     # 4. Eğitim
     print("Model eğitimi başlatılıyor...")
-    train_xgboost_model(df_featured, target='LEAD_TIME')
-    train_catboost_model(df_featured)
-
+    xgb_final_model = run_cross_validation(df_featured, model_type='xgboost', target='LEAD_TIME', n_splits=5)
+    """
+    cat_final_model = run_cross_validation(df_featured, model_type='catboost', target='LEAD_TIME', n_splits=5)
+    """
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
 if __name__ == "__main__":
