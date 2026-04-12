@@ -138,11 +138,18 @@ def plot_unified_correlation(X, y, target_name='LEAD_TIME'):
 
             corr_matrix.loc[col1, col2] = corr
 
-    plt.figure(figsize=(14, 12))
-    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='YlGnBu', center=0,
-                vmin=0, vmax=1, square=True, linewidths=.5)
+    # 1. MASKE OLUŞTURMA: Mutlak değeri 0.50'den KÜÇÜK olanları "True" (yani gizle) yapıyoruz.
+    # (abs kullanıyoruz çünkü -0.60 gibi güçlü ters ilişkilerin de görünmesini isteriz)
+    mask = abs(corr_matrix) < 0.50
 
-    plt.title("Karma Özellikler Korelasyon Haritası (Sayısal & Kategorik)", pad=20, size=14)
+    plt.figure(figsize=(14, 12))
+
+    # 2. MASKEYİ UYGULAMA: 'mask=mask' parametresini ekliyoruz
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='YlGnBu', center=0,
+                vmin=0, vmax=1, square=True, linewidths=.5,
+                mask=mask)  # <--- YENİ EKLENEN KISIM
+
+    plt.title("Karma Özellikler Korelasyon Haritası (Sadece %50 Üzeri İlişkiler)", pad=20, size=14)
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0)
     plt.tight_layout()
