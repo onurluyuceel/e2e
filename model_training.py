@@ -84,7 +84,7 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
     features = [
         'VENDORFINAL', 'MATERIALTYPE_NEW', 'MAINPART GRUP',
         'LENGTH', 'LOAD_ITEM',
-        'Yönetici Etkisi', 'ORDER_MIKTAR', 'YUZEY_ISLEM',
+        'Yönetici Etkisi', 'ORDER_MIKTAR', 'YUZEY_ISLEM'
     ]
 
     # Sadece seçilen özellikleri ve hedef değişkeni (Lead Time) veriden ayırıyoruz.
