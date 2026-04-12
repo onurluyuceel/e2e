@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import optuna
 import sys
 import os
+import seaborn as sns
+from analysis import plot_unified_correlation
 
 def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=5):
     """
@@ -250,8 +252,15 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
             'Importance_Std': std_importance
         }).sort_values(by='Importance_Mean', ascending=False)
 
-        # Çizim fonksiyonunu çağırıyoruz
-        plot_feature_importance(importance_df, model_type)
+    # Çizim fonksiyonunu çağırıyoruz
+    plot_feature_importance(importance_df, model_type)
+    # ====================================================
+    # BÜTÜNCÜL KORELASYON HARİTASINI ÇAĞIR
+    # ====================================================
+    # K-Means ile üretilen VENDOR_GROUP'u görebilmek için
+    # son fold'daki eğitim setini (X_train, y_train) gönderiyoruz.
+    plot_unified_correlation(X_train, y_train, target_name=target)
+    # ====================================================
 
     return model
 
