@@ -9,7 +9,7 @@ def main():
 
     # 1. Veri Yükleme ve Temizleme (Preprocessing)
     print("Veri yükleniyor ve temizleniyor...")
-    df = pd.read_excel('datav2.xlsx')
+    df = pd.read_excel('datav3.xlsx')
     df = preprocess_data(df)
 
     # Temizlenmiş veriyi yedek olarak kaydet
@@ -43,8 +43,9 @@ def main():
         print(f"  {key}: {value}")
 
     xgb_final_model = run_cross_validation(df_featured, model_type='xgboost', target='LEAD_TIME', n_splits=5,xgb_params=best_xgb_params)
+    """
     cat_final_model = run_cross_validation(df_featured, model_type='catboost', target='LEAD_TIME', n_splits=5)
-
+    """
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
 if __name__ == "__main__":
