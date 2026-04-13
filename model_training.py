@@ -264,7 +264,7 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
 
     return model
 
-def optimize_xgboost(df, target='LEAD_TIME', n_splits=5, n_trials=50):
+def optimize_xgboost(df, target='LEAD_TIME', n_splits=5, n_trials=5):
     """
     Optuna kullanarak XGBoost hiperparametrelerini K-Fold CV ile optimize eder.
     """

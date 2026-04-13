@@ -1,3 +1,5 @@
+import os
+import json
 import pandas as pd
 from preprocessing import preprocess_data
 from new_features import add_features
@@ -27,16 +29,30 @@ def main():
     df_featured.to_excel('data_with_features.xlsx', index=False)
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
 
-    # 4. Eğitim ve Optimizasyon
-    print("\nOptuna ile XGBoost hiperparametre optimizasyonu başlatılıyor...")
-    # n_trials=10 dedik (10 farklı parametre seti deneyecek). İstersen artırabilirsin.
-    best_xgb_params = optimize_xgboost(df_featured, target='LEAD_TIME', n_splits=5, n_trials=50)
+    params_file = 'best_xgb_params.json'
 
-    print("\n[BULUNAN EN İYİ XGBOOST PARAMETRELERİ]")
+    # Dosya var mı kontrol et
+    if os.path.exists(params_file):
+        print(f"\nKaydedilmiş parametreler '{params_file}' dosyasından okunuyor...")
+        with open(params_file, 'r') as f:
+            best_xgb_params = json.load(f)
+
+    else:
+        print("\nParametre dosyası bulunamadı. Optimizasyon başlatılıyor...")
+        best_xgb_params = optimize_xgboost(df_featured, target='LEAD_TIME', n_splits=5, n_trials=5)
+
+        # Bulunan parametreleri JSON olarak bilgisayara kaydet
+        with open(params_file, 'w') as f:
+            json.dump(best_xgb_params, f, indent=4)
+        print(f"En iyi parametreler '{params_file}' adıyla kaydedildi.")
+
+    print("\n[KULLANILAN XGBOOST PARAMETRELERİ]")
     for key, value in best_xgb_params.items():
         print(f"  {key}: {value}")
 
-    xgb_final_model = run_cross_validation(df_featured, model_type='xgboost', target='LEAD_TIME', n_splits=5,xgb_params=best_xgb_params)
+    # Modeli parametrelerle çalıştır
+    xgb_final_model = run_cross_validation(df_featured, model_type='xgboost', target='LEAD_TIME', n_splits=5,
+                                           xgb_params=best_xgb_params)
 
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
