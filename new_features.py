@@ -103,14 +103,13 @@ def add_length_groups(df):
         upper_limit = 500
 
     bins = list(range(0, upper_limit + 500, 500))
+    bins.append(float('inf'))-
 
     # 5. Veriyi SAYISAL gruplara yerleştir
-    # DİKKAT: labels=False yaptığımızda Pandas otomatik olarak 0, 1, 2, 3 diye indeksler atar.
-    # Biz grup numarası 1'den başlasın diye sonuna + 1 ekliyoruz.
     df['LENGTH_GROUP_NUM'] = pd.cut(
         df['MAX_DIMENSION'],
         bins=bins,
-        labels=False,  # <--- İŞTE BÜYÜ BURADA: Metin yerine sayı üretir
+        labels=False,
         right=True,
         include_lowest=True
     ) + 1
@@ -126,6 +125,6 @@ def add_features(df):
     # Tüm alt fonksiyonları sırayla çalıştır
     df = add_new_material_classes(df)
     df = add_geometric_groups(df)
-    df = add_length_groups(df)  # YENİ EKLENEN FONKSİYON
+    df = add_length_groups(df)
 
     return df
