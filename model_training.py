@@ -1,19 +1,16 @@
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from catboost import CatBoostRegressor
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import optuna
-import sys
-import os
-import seaborn as sns
+import json
 from analysis import plot_unified_correlation
 
-def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=5):
+def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=5, verbose=True):
     """
     Tedarikçi bazlı gruplamayı veri sızıntısı olmadan yapar.
     """
@@ -76,129 +73,78 @@ def plot_feature_importance(importance_df, model_name):
     plt.tight_layout()
     plt.show()
 
-def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=5, xgb_params=None):
+
+def run_cross_validation(df, features_list, target='LEAD_TIME', n_splits=5, xgb_params=None):
     """
     Belirlenen özellikler üzerinden K-Fold Çapraz Doğrulama (Cross-Validation) yapar.
     """
-
-    # 1. ÖZELLİK SEÇİMİ (FEATURE SELECTION)
-    # Modelin öğrenmesini istediğimiz "en etkili" 9 değişkeni buraya tanımlıyoruz.
-    # NOT: VENDORFINAL'ı buraya ekledik çünkü K-Means fonksiyonu bu ismi kullanarak VENDOR_GROUP türetecek.
-    features = [
-        'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
-        'MATERIALTYPE_NEW', 'IS_CONDITION_CHANGED', 'GEOMETRIC_GROUP',
-        'LENGTH', 'CALC_VOLUME'
-    ]
-
-    # Sadece seçilen özellikleri ve hedef değişkeni (Lead Time) veriden ayırıyoruz.
-    # 'if c in df.columns' kontrolü, olmayan bir sütun çağrılırsa kodun çökmesini önler.
-    X = df[[c for c in features if c in df.columns]].copy()
+    # 1. ÖZELLİK SEÇİMİ (İçerideki manuel liste silindi, doğrudan parametre kullanılıyor)
+    X = df[[c for c in features_list if c in df.columns]].copy()
     y = df[target]
 
     # 2. K-FOLD YAPISININ KURULMASI
-    # n_splits=5: Veriyi 5 parçaya böler. Her seferinde 4 parça eğitim, 1 parça test olur.
-    # shuffle=True: Veriyi bölmeden önce karıştırır (tarihsel bir sıralama varsa yanlılığı önler).
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-    # Tüm metrikleri saklamak için genişletilmiş sözlük
     metrics = {
         'test_mae': [], 'train_mae': [],
         'test_r2': [], 'test_rmse': [], 'gap': []
     }
-    # Feature Importance Değişkenleri
     fold_importances = []
     feature_names = None
 
     # 3. CROSS-VALIDATION DÖNGÜSÜ
-    # Her bir 'fold' (katman) için veriyi %80 Eğitim - %20 Test olarak ayırıp işlemleri başlatıyoruz.
     for fold, (train_idx, test_idx) in enumerate(kf.split(X)):
-        # Veriyi o anki fold indexlerine göre ayırıyoruz
         X_train, X_test = X.iloc[train_idx].copy(), X.iloc[test_idx].copy()
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-        # --- KRİTİK ADIM: K-MEANS GRUPLAMA ---
-        # Veri sızıntısını (Data Leakage) önlemek için K-Means'i her fold içinde sıfırdan hesaplıyoruz.
-        # Bu işlem sonucunda VENDORFINAL sütunu silinir, yerine VENDOR_GROUP eklenir.
-        X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train)
+        # KRİTİK ADIM: K-MEANS GRUPLAMA
+        # verbose=(fold==0) sayesinde kümeleri terminale 5 kere değil, sadece 1 kere yazar.
+        X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train, verbose=(fold == 0))
 
-        # 4. MODEL SEÇİMİ VE EĞİTİMİ
-        if model_type == 'xgboost':
-            # XGBoost kategorik verileri 'category' tipinde bekler.
-            # 'object' (metin) tipindeki sütunları bulup dönüştürüyoruz.
-            cat_cols = X_train.select_dtypes(include=['object']).columns
-            for col in cat_cols:
-                # --- KRİTİK DÜZELTME BAŞLANGICI ---
-                # 1. Train setindeki kategorileri belirle
-                X_train[col] = X_train[col].astype('category')
+        # 4. KATEGORİK DEĞİŞKEN DÖNÜŞÜMÜ
+        cat_cols = X_train.select_dtypes(include=['object']).columns
+        for col in cat_cols:
+            X_train[col] = X_train[col].astype('category')
+            X_test[col] = pd.Categorical(X_test[col], categories=X_train[col].cat.categories)
 
-                # 2. Test setindeki değerleri Train'in kategorilerine zorla.
-                # Train'de bulunmayan değerler (örn: Cluster_New) otomatik olarak NaN olur.
-                # XGBoost NaN kategorik değerleri "bilinmeyen" olarak işleyebilir.
-                X_test[col] = pd.Categorical(X_test[col], categories=X_train[col].cat.categories)
+        # 5. PARAMETRE ENTEGRASYONU
+        if xgb_params is None:
+            xgb_params = {
+                'n_estimators': 3000,
+                'learning_rate': 0.01,
+                'max_depth': 4,
+                'reg_lambda': 120,
+                'reg_alpha': 10,
+                'min_child_weight': 10,
+                'gamma': 2,
+                'subsample': 0.6,
+                'colsample_bytree': 0.6,
+                'objective': 'reg:squarederror',
+                'eval_metric': 'mae',
+                'early_stopping_rounds': 100,
+                'enable_categorical': True,
+                'tree_method': 'hist',
+                'random_state': 42
+            }
+        else:
+            xgb_params['enable_categorical'] = True
+            xgb_params['tree_method'] = 'hist'
+            xgb_params['objective'] = 'reg:squarederror'
+            xgb_params['eval_metric'] = 'mae'
+            xgb_params['random_state'] = 42
 
-            # --- PARAMETRE ENTEGRASYONU ---
-            if xgb_params is None:
-                # Dışarıdan parametre gelmezse varsayılan ayarlarını kullan
-                xgb_params = {
-                    'n_estimators': 3000,
-                    'learning_rate': 0.01,
-                    'max_depth': 4,
-                    'reg_lambda': 120,
-                    'reg_alpha': 10,
-                    'min_child_weight': 10,
-                    'gamma': 2,
-                    'subsample': 0.6,
-                    'colsample_bytree': 0.6,
-                    'objective': 'reg:squarederror',
-                    'eval_metric': 'mae',
-                    'early_stopping_rounds': 100,
-                    'enable_categorical': True,
-                    'tree_method': 'hist',
-                    'random_state': 42
-                }
-            else:
-                # EĞER DIŞARIDAN (OPTUNA'DAN) PARAMETRE GELDİYSE BİLE,
-                # ZORUNLU SABİT AYARLARI BU SÖZLÜĞE EKLE
-                xgb_params['enable_categorical'] = True
-                xgb_params['tree_method'] = 'hist'
-                xgb_params['objective'] = 'reg:squarederror'
-                xgb_params['eval_metric'] = 'mae'
-                xgb_params['random_state'] = 42
+        model = xgb.XGBRegressor(**xgb_params)
 
-            # Parametreleri modele veriyoruz
-            model = xgb.XGBRegressor(**xgb_params)
+        # Eğitim sırasında her adımı ekrana basıp bilgisayarı yormaması için verbose=False yapıldı
+        fit_params = {'verbose': False}
+        if 'early_stopping_rounds' not in xgb_params:
+            model.set_params(early_stopping_rounds=100)
 
-            fit_params = {'verbose': 500}
-            if 'early_stopping_rounds' not in xgb_params:
-                model.set_params(early_stopping_rounds=100)
+        model.fit(X_train, y_train, eval_set=[(X_train, y_train), (X_test, y_test)], **fit_params)
 
-            model.fit(X_train, y_train, eval_set=[(X_train, y_train), (X_test, y_test)], **fit_params)
-
-            results = model.evals_result()
-            f_train_mae = results['validation_0']['mae'][-1]
-            f_test_mae = results['validation_1']['mae'][-1]
-
-        elif model_type == 'catboost':
-            # CatBoost kategorik sütunların listesini açıkça bilmek ister.
-            cat_cols = X_train.select_dtypes(include=['object']).columns.tolist()
-
-            # CatBoost Regressor Ayarları
-            # allow_writing_files=False: Eğitim sırasında log dosyası oluşturmasını engeller (hız için).
-            model = CatBoostRegressor(
-                iterations=3000,
-                learning_rate=0.03,
-                depth=4,
-                l2_leaf_reg=10,
-                eval_metric='MAE',
-                early_stopping_rounds=100,
-                verbose=500,
-                allow_writing_files=False
-            )
-            model.fit(X_train, y_train, cat_features=cat_cols, eval_set=(X_test, y_test))
-
-            # Metrik tutarlılığı için doğrudan MAE hesaplıyoruz
-            f_train_mae = mean_absolute_error(y_train, model.predict(X_train))
-            f_test_mae = mean_absolute_error(y_test, model.predict(X_test))
+        results = model.evals_result()
+        f_train_mae = results['validation_0']['mae'][-1]
+        f_test_mae = results['validation_1']['mae'][-1]
 
         # Özellik Önemlerini Kaydetme
         if fold == 0:
@@ -206,7 +152,6 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
 
         if hasattr(model, 'feature_importances_'):
             raw_importances = model.feature_importances_
-            # Modellerin farklı formatlarını eşitlemek için toplamı 100'e (Yüzdeye) zorluyoruz
             normalized_importances = (raw_importances / raw_importances.sum()) * 100
             fold_importances.append(normalized_importances)
 
@@ -222,27 +167,24 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
         metrics['test_rmse'].append(f_rmse)
         metrics['gap'].append(f_gap)
 
-        # Fold içindeki metrikleri yazdıran güncellenmiş satır:
-        print(f" Fold {fold + 1} | Test MAE: {f_test_mae:.2f} | Train MAE: {f_train_mae:.2f} | R2: {f_r2:.4f} | RMSE: {f_rmse:.2f} | Gap: %{f_gap:.2f}")
+        print(
+            f" Fold {fold + 1} | Test MAE: {f_test_mae:.2f} | Train MAE: {f_train_mae:.2f} | R2: {f_r2:.4f} | RMSE: {f_rmse:.2f} | Gap: %{f_gap:.2f}")
 
-    # Raporlama Kısmı
+    # Raporlama Kısmı (Eski model_type çökmeleri giderildi)
     print("\n" + "=" * 55)
-    print(f"[{model_type.upper()} CV NİHAİ RAPOR]")
+    print("[XGBOOST CV NİHAİ RAPOR]")
     print("=" * 55)
     print(f"  {'R2 Score (Avg ± Std)':<25} : {np.mean(metrics['test_r2']):.4f} ± {np.std(metrics['test_r2']):.4f}")
     print(f"  {'RMSE (Avg ± Std)':<25} : {np.mean(metrics['test_rmse']):.4f} ± {np.std(metrics['test_rmse']):.4f}")
-    print(
-        f"  {'Test MAE (Avg ± Std)':<25} : {np.mean(metrics['test_mae']):.4f} ± {np.std(metrics['test_mae']):.4f}")
-    print(
-        f"  {'Train MAE (Avg ± Std)':<25} : {np.mean(metrics['train_mae']):.4f} ± {np.std(metrics['train_mae']):.4f}")
+    print(f"  {'Test MAE (Avg ± Std)':<25} : {np.mean(metrics['test_mae']):.4f} ± {np.std(metrics['test_mae']):.4f}")
+    print(f"  {'Train MAE (Avg ± Std)':<25} : {np.mean(metrics['train_mae']):.4f} ± {np.std(metrics['train_mae']):.4f}")
     print("=" * 55)
     print(f"  {'MAE FARKI (GAP) (%)':<25} : %{np.mean(metrics['gap']):.2f} ± %{np.std(metrics['gap']):.2f}")
     print("=" * 55)
 
-    # FEATURE IMPORTANCE HESAPLAMA VE ÇİZDİRME
+    # FEATURE IMPORTANCE ÇİZDİRME
     if fold_importances:
         print("\nFeature Importance grafiği hesaplanıyor ve açılıyor...")
-
         avg_importance = np.mean(fold_importances, axis=0)
         std_importance = np.std(fold_importances, axis=0)
 
@@ -252,21 +194,18 @@ def run_cross_validation(df, model_type='xgboost', target='LEAD_TIME', n_splits=
             'Importance_Std': std_importance
         }).sort_values(by='Importance_Mean', ascending=False)
 
-    # Çizim fonksiyonunu çağırıyoruz
-    plot_feature_importance(importance_df, model_type)
-    # ====================================================
-    # BÜTÜNCÜL KORELASYON HARİTASINI ÇAĞIR
-    # ====================================================
-    # K-Means ile üretilen VENDOR_GROUP'u görebilmek için
-    # son fold'daki eğitim setini (X_train, y_train) gönderiyoruz.
+        # Artık olmayan model_type yerine doğrudan "XGBOOST" stringi gönderiliyor
+        plot_feature_importance(importance_df, "XGBOOST")
+
     plot_unified_correlation(X_train, y_train, target_name=target)
-    # ====================================================
 
     return model
 
-def optimize_xgboost(df, target='LEAD_TIME', n_splits=5, n_trials=5):
+
+def optimize_xgboost(df, features_list, target='LEAD_TIME', n_splits=5, n_trials=50):
     """
     Optuna kullanarak XGBoost hiperparametrelerini K-Fold CV ile optimize eder.
+    HIZLANDIRILMIŞ VERSİYON: K-Means önceden hesaplanır.
     """
     features = [
         'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
@@ -277,6 +216,36 @@ def optimize_xgboost(df, target='LEAD_TIME', n_splits=5, n_trials=5):
     X = df[[c for c in features if c in df.columns]].copy()
     y = df[target]
 
+    # =========================================================
+    # OPTİMİZASYON 1: FOLD'LARI VE KÜMELERİ ÖNCEDEN HESAPLA
+    # K-Means 250 kere değil, sadece 5 kere çalışacak!
+    # =========================================================
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+    precomputed_folds = []
+
+    print("\nOptuna için veriler bölünüyor ve K-Means kümeleri önceden hesaplanıyor...")
+
+    for train_idx, test_idx in kf.split(X):
+        X_train, X_test = X.iloc[train_idx].copy(), X.iloc[test_idx].copy()
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+        # Veri sızıntısını önlemek için her fold'da K-Means çalışır (Sadece 1 kez)
+        X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train)
+
+        cat_cols = X_train.select_dtypes(include=['object']).columns
+        for col in cat_cols:
+            X_train[col] = X_train[col].astype('category')
+            X_test[col] = pd.Categorical(X_test[col], categories=X_train[col].cat.categories)
+
+        # Hazırlanan bu seti belleğe (listeye) ekle
+        precomputed_folds.append((X_train, X_test, y_train, y_test))
+
+    sys.stdout = old_stdout  # Printleri geri aç
+    print("Ön hesaplama tamamlandı. XGBoost Optimizasyonu başlıyor...")
+
+    # =========================================================
+    # OPTİMİZASYON 2: YALINLAŞTIRILMIŞ OBJECTIVE FONKSİYONU
+    # =========================================================
     def objective(trial):
         params = {
             'n_estimators': trial.suggest_int('n_estimators', 1000, 3000, step=500),
@@ -294,21 +263,10 @@ def optimize_xgboost(df, target='LEAD_TIME', n_splits=5, n_trials=5):
             'random_state': 42
         }
 
-        kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
         fold_maes = []
 
-        for train_idx, test_idx in kf.split(X):
-            X_train, X_test = X.iloc[train_idx].copy(), X.iloc[test_idx].copy()
-            y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-
-            # Veri sızıntısını önlemek için her fold'da K-Means çalışır
-            X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train)
-
-            cat_cols = X_train.select_dtypes(include=['object']).columns
-            for col in cat_cols:
-                X_train[col] = X_train[col].astype('category')
-                X_test[col] = pd.Categorical(X_test[col], categories=X_train[col].cat.categories)
-
+        # Sadece önceden hesaplanmış, temiz listeyi döngüye sok!
+        for X_train, X_test, y_train, y_test in precomputed_folds:
             model = xgb.XGBRegressor(**params)
             model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
 
@@ -317,7 +275,6 @@ def optimize_xgboost(df, target='LEAD_TIME', n_splits=5, n_trials=5):
 
         return np.mean(fold_maes)
 
-    # Aşağıdaki kısımlar "def optimize_xgboost" hizasında olmalı (1 TAB içeride)
     old_stdout = sys.stdout
     sys.stdout = open(os.devnull, 'w', encoding='utf-8')
 

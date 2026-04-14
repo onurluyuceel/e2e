@@ -16,8 +16,6 @@ def main():
     df.to_excel('data_processed.xlsx', index=False)
     print("Temizlenmiş veri 'data_processed.xlsx' adıyla kaydedildi.")
 
-    df = pd.read_excel('data_processed.xlsx')
-
     # Merkezi tip dönüşümü: Veriyi tekrar okumaya gerek kalmadan bellekte devam ediyoruz
     df['VENDORFINAL'] = df['VENDORFINAL'].astype(str)
 
@@ -29,6 +27,12 @@ def main():
     df_featured.to_excel('data_with_features.xlsx', index=False)
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
 
+    selected_features = [
+        'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
+        'MATERIALTYPE_NEW', 'IS_CONDITION_CHANGED', 'GEOMETRIC_GROUP',
+        'LENGTH', 'CALC_VOLUME'
+    ]
+
     params_file = 'best_xgb_params.json'
 
     # Dosya var mı kontrol et
@@ -39,7 +43,13 @@ def main():
 
     else:
         print("\nParametre dosyası bulunamadı. Optimizasyon başlatılıyor...")
-        best_xgb_params = optimize_xgboost(df_featured, target='LEAD_TIME', n_splits=5, n_trials=5)
+        best_xgb_params = optimize_xgboost(
+            df_featured,
+            features_list=selected_features,
+            target='LEAD_TIME',
+            n_splits=5,
+            n_trials=50
+        )
 
         # Bulunan parametreleri JSON olarak bilgisayara kaydet
         with open(params_file, 'w') as f:
@@ -51,9 +61,22 @@ def main():
         print(f"  {key}: {value}")
 
     # Modeli parametrelerle çalıştır
-    xgb_final_model = run_cross_validation(df_featured, model_type='xgboost', target='LEAD_TIME', n_splits=5,
-                                           xgb_params=best_xgb_params)
-
+    xgb_cv_model = run_cross_validation(
+        df_featured,
+        features_list=selected_features,
+        target='LEAD_TIME',
+        n_splits=5,
+        xgb_params=best_xgb_params
+    )
+    """
+    # Nihai modeli eğit
+    final_prod_model = train_and_save_final_model(
+        df_featured,
+        features_list=selected_features,
+        target='LEAD_TIME',
+        xgb_params=best_xgb_params
+    )
+    """
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
 if __name__ == "__main__":

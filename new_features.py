@@ -103,7 +103,7 @@ def add_length_groups(df):
         upper_limit = 500
 
     bins = list(range(0, upper_limit + 500, 500))
-    bins.append(float('inf'))-
+    bins.append(float('inf'))
 
     # 5. Veriyi SAYISAL gruplara yerleştir
     df['LENGTH_GROUP_NUM'] = pd.cut(
