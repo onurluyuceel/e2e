@@ -150,7 +150,6 @@ def run_cross_validation(df, features_list, target='LEAD_TIME', n_splits=5, xgb_
         results = model.evals_result()
         f_train_mae = results['validation_0']['mae'][-1]
         f_test_mae = results['validation_1']['mae'][-1]
-
         preds = model.predict(X_test)
         f_r2 = r2_score(y_test, preds)
         f_rmse = np.sqrt(mean_squared_error(y_test, preds))
@@ -247,8 +246,15 @@ def optimize_xgboost(df, features_list, target='LEAD_TIME', n_splits=5, n_trials
 
         return np.mean(fold_maes)
 
-    # 2. HATA DÜZELTİLDİ: old_stdout silindi, Optuna'nın kendi susturucusu eklendi
-    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    # optuna.logging.WARNING satırını siliyoruz veya INFO yapıyoruz
+    optuna.logging.set_verbosity(optuna.logging.INFO)  # <-- INFO yaparsan her denemeyi yazar
+
+    study = optuna.create_study(direction='minimize')
+
+    # show_progress_bar=True ekleyerek görsel bir bar da görebilirsin (Opsiyonel)
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+
+    return study.best_params
 
     study = optuna.create_study(direction='minimize')
     study.optimize(objective, n_trials=n_trials)

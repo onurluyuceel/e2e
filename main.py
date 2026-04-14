@@ -24,9 +24,10 @@ def main():
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
 
     selected_features = [
-        'LOAD_ITEM', 'ORDER_MIKTAR', 'MAINPART', 'VENDORFINAL',
-        'MATERIALTYPE_NEW', 'IS_CONDITION_CHANGED', 'GEOMETRIC_GROUP',
-        'LENGTH', 'CALC_VOLUME'
+        'LOAD_ITEM', 'PLANT', 'ORDER_MIKTAR', 'Yönetici Etkisi',
+        'MAINPART GRUP', 'VENDORFINAL', 'MATERIALTYPE_NEW',
+        'GEOMETRIC_GROUP', 'CALC_VOLUME', 'YUZEY_ISLEM',
+        'IDEAL_LEAD_TIME', 'LENGTH_GROUP_NUM'
     ]
 
     params_file = 'best_xgb_params.json'
