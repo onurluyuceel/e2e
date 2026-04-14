@@ -11,8 +11,6 @@ def main():
     print("Veri yükleniyor ve temizleniyor...")
     df = pd.read_excel('datav3.xlsx')
     df = preprocess_data(df)
-
-    # Temizlenmiş veriyi yedek olarak kaydet
     df.to_excel('data_processed.xlsx', index=False)
     print("Temizlenmiş veri 'data_processed.xlsx' adıyla kaydedildi.")
 
@@ -22,8 +20,6 @@ def main():
     # 2. Özellik Mühendisliği (Feature Engineering)
     print("Yeni özellikler türetiliyor...")
     df_featured = add_features(df)
-
-    # Özellik eklenmiş veriyi kaydet
     df_featured.to_excel('data_with_features.xlsx', index=False)
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
 
@@ -37,7 +33,7 @@ def main():
 
     # Dosya var mı kontrol et
     if os.path.exists(params_file):
-        print(f"\nKaydedilmiş parametreler '{params_file}' dosyasından okunuyor...")
+        print(f"Kaydedilmiş parametreler '{params_file}' dosyasından okunuyor...")
         with open(params_file, 'r') as f:
             best_xgb_params = json.load(f)
 
@@ -56,7 +52,7 @@ def main():
             json.dump(best_xgb_params, f, indent=4)
         print(f"En iyi parametreler '{params_file}' adıyla kaydedildi.")
 
-    print("\n[KULLANILAN XGBOOST PARAMETRELERİ]")
+    print("\nKULLANILAN XGBOOST PARAMETRELERİ")
     for key, value in best_xgb_params.items():
         print(f"  {key}: {value}")
 
