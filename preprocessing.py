@@ -46,7 +46,7 @@ def preprocess_data(df, is_training=True):
         if 'İLK_BARKOD_TARİH' in df.columns and 'PO_CREATIONDATE' in df.columns:
             df.loc[:, 'LEAD_TIME'] = (df['İLK_BARKOD_TARİH'] - df['PO_CREATIONDATE']).dt.days
             rows_before_lt_filter = len(df)
-            df = df[df['LEAD_TIME'] <= 90].copy()  # 1 yıldan uzun süren "hatalı" verileri sil
+            df = df[df['LEAD_TIME'] <= 150].copy()  # 1 yıldan uzun süren "hatalı" verileri sil
             lt_deleted_count = rows_before_lt_filter - len(df)
         else:
             raise KeyError("Eğitim (is_training=True) seçili ama 'İLK_BARKOD_TARİH' sütunu bulunamadı!")
