@@ -119,12 +119,96 @@ def add_length_groups(df):
 
     return df
 
+
+# new_features.py dosyasının sonuna veya uygun bir yerine ekle
+
+def add_material_geometric_interaction(df):
+    """MATERIALTYPE_NEW ve GEOMETRIC_GROUP sütunlarını birleştirerek etkileşim özelliği yaratır."""
+
+    # 1. Her iki sütunun da var olduğundan emin olalım
+    if 'MATERIALTYPE_NEW' in df.columns and 'GEOMETRIC_GROUP' in df.columns:
+        # 2. İki metni birleştirip yeni bir kategori oluşturuyoruz (Örn: "Çelik_ROUND")
+        df['MAT_GEO_INTERACTION'] = df['MATERIALTYPE_NEW'].astype(str) + "_" + df['GEOMETRIC_GROUP'].astype(str)
+
+        # 3. XGBoost'un tanıması için kategorik tipe çeviriyoruz
+        df['MAT_GEO_INTERACTION'] = df['MAT_GEO_INTERACTION'].astype('category')
+
+    return df
+
+
+def add_time_features(df):
+    """Sipariş açılış tarihinden lojistik açıdan kritik zaman özelliklerini türetir."""
+
+    # 1. Tarih formatında olduğundan emin olalım
+    if 'PO_CREATIONDATE' in df.columns:
+        # Hata vermemesi için boş olmayanları seçelim
+        mask = df['PO_CREATIONDATE'].notna()
+
+        # A. Sipariş Hangi Ayda Verildi? (1-12) - Makro Sezonsallık (Çin Yılbaşı, Kış vs.)
+        df.loc[mask, 'SIPARIS_AYI'] = df.loc[mask, 'PO_CREATIONDATE'].dt.month
+
+        # B. Sipariş Haftanın Hangi Günü Verildi? (0: Pazartesi ... 4: Cuma, 5: Cmt, 6: Pazar)
+        df.loc[mask, 'SIPARIS_GUNU'] = df.loc[mask, 'PO_CREATIONDATE'].dt.dayofweek
+
+        # Boş (Na) kalan tarihleri güvenli bir varsayılan ile (örn: ay 6, gün 0) dolduralım ki XGBoost hata vermesin
+        df['SIPARIS_AYI'] = df['SIPARIS_AYI'].fillna(6).astype(int)
+        df['SIPARIS_GUNU'] = df['SIPARIS_GUNU'].fillna(0).astype(int)
+
+    else:
+        print("UYARI: 'PO_CREATIONDATE' bulunamadı, zaman özellikleri eklenemedi.")
+
+    return df
+
+
+def add_advanced_structural_features(df):
+    """Fiziksel zorluk ve lojistik sınırları temsil eden ileri düzey etkileşimler türetir."""
+
+    # ---------------------------------------------------------
+    # 1. EN-BOY ORANI (ASPECT RATIO)
+    # Parça ince/uzun mu, yoksa orantılı bir blok mu?
+    # ---------------------------------------------------------
+    df['ASPECT_RATIO'] = 0.0
+
+    # Yuvarlak parçalar için (Uzunluk / Çap)
+    round_mask = (df['GEOMETRIC_GROUP'] == 'ROUND') & (df['OUTERDIAMETER'] > 0)
+    if 'OUTERDIAMETER' in df.columns and 'LENGTH' in df.columns:
+        df.loc[round_mask, 'ASPECT_RATIO'] = df['LENGTH'] / df['OUTERDIAMETER']
+
+    # Diğer parçalar için (Uzunluk / Genişlik)
+    non_round_mask = (df['GEOMETRIC_GROUP'] != 'ROUND') & (df['WIDTH'] > 0)
+    if 'WIDTH' in df.columns and 'LENGTH' in df.columns:
+        df.loc[non_round_mask, 'ASPECT_RATIO'] = df['LENGTH'] / df['WIDTH']
+
+    # Sonsuz (Inf) veya eksik değerleri temizle (hata vermemesi için)
+    df['ASPECT_RATIO'] = df['ASPECT_RATIO'].replace([np.inf, -np.inf], 0).fillna(0)
+
+    # ---------------------------------------------------------
+    # 2. ŞEKİL ve BOYUT ETKİLEŞİMİ (Lojistik Zorluk)
+    # Örn: "PLATE_1" (Kolay) vs "PLATE_5" (Zor)
+    # ---------------------------------------------------------
+    if 'GEOMETRIC_GROUP' in df.columns and 'LENGTH_GROUP_NUM' in df.columns:
+        df['GEO_SIZE_INTERACTION'] = df['GEOMETRIC_GROUP'].astype(str) + "_" + df['LENGTH_GROUP_NUM'].astype(str)
+        df['GEO_SIZE_INTERACTION'] = df['GEO_SIZE_INTERACTION'].astype('category')
+
+    # ---------------------------------------------------------
+    # 3. MALZEME ve BOYUT ETKİLEŞİMİ (Tedarik Zorluğu)
+    # Örn: "Titanyum_5" (Özel Üretim) vs "Çelik_5" (Standart)
+    # ---------------------------------------------------------
+    if 'MATERIALTYPE_NEW' in df.columns and 'LENGTH_GROUP_NUM' in df.columns:
+        df['MAT_SIZE_INTERACTION'] = df['MATERIALTYPE_NEW'].astype(str) + "_" + df['LENGTH_GROUP_NUM'].astype(str)
+        df['MAT_SIZE_INTERACTION'] = df['MAT_SIZE_INTERACTION'].astype('category')
+
+    return df
+
 def add_features(df):
     df = df.copy()
 
-    # Tüm alt fonksiyonları sırayla çalıştır
+    # Eski Fonksiyonlar
     df = add_new_material_classes(df)
     df = add_geometric_groups(df)
     df = add_length_groups(df)
+    df = add_material_geometric_interaction(df)
+    df = add_time_features(df)
+    df = add_advanced_structural_features(df)
 
     return df
