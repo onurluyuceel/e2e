@@ -3,7 +3,7 @@ import json
 import pandas as pd
 from preprocessing import preprocess_data
 from new_features import add_features
-from model_training import run_cross_validation, optimize_xgboost
+from model_training import run_cross_validation, optimize_xgboost, train_and_save_final_model
 
 def main():
 
@@ -24,10 +24,10 @@ def main():
     print("Zenginleştirilmiş veri 'data_with_features.xlsx' adıyla kaydedildi.")
 
     selected_features = [
-        'LOAD_ITEM', 'PLANT', 'ORDER_MIKTAR', 'Yönetici Etkisi',
+        'LOAD_ITEM', 'ORDER_MIKTAR', 'Yönetici Etkisi',
         'MAINPART GRUP', 'VENDORFINAL', 'MATERIALTYPE_NEW',
         'GEOMETRIC_GROUP', 'CALC_VOLUME', 'YUZEY_ISLEM',
-        'IDEAL_LEAD_TIME', 'LENGTH_GROUP_NUM'
+        'IDEAL_LEAD_TIME', 'LENGTH_GROUP_NUM', 'PLANT'
     ]
 
     params_file = 'best_xgb_params.json'
@@ -65,7 +65,7 @@ def main():
         n_splits=5,
         xgb_params=best_xgb_params
     )
-    """
+
     # Nihai modeli eğit
     final_prod_model = train_and_save_final_model(
         df_featured,
@@ -73,7 +73,7 @@ def main():
         target='LEAD_TIME',
         xgb_params=best_xgb_params
     )
-    """
+
     print("\n[TAMAMLANDI] Tüm süreç başarıyla sonuçlandı.")
 
 if __name__ == "__main__":

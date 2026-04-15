@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def preprocess_data(df):
+def preprocess_data(df, is_training=True):
 
     df = df.copy()  # Güvenlik önlemi
     # --- STEP 0: INITIAL DROPS ---
@@ -23,25 +23,33 @@ def preprocess_data(df):
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
     # --- ÖZEL KURAL: 1 EKİM TARİH DÜZENLEMESİ ---
-    threshold_date = pd.Timestamp(2024, 10, 1)
+    # 1 Ekim kuralı sadece her iki tarih de varsa (Eğitimde) çalışır
+    if 'İLK_BARKOD_TARİH' in df.columns and 'PO_CREATIONDATE' in df.columns:
+        threshold_date = pd.Timestamp(2024, 10, 1)
+        mask = (df['PO_CREATIONDATE'] < threshold_date) & (df['İLK_BARKOD_TARİH'] >= threshold_date)
+        df.loc[mask, 'PO_CREATIONDATE'] = threshold_date
 
-    # Mantık: PO < 1 Ekim VE Barkod >= 1 Ekim ise PO'yu 1 Ekim yap
-    mask = (df['PO_CREATIONDATE'] < threshold_date) & (df['İLK_BARKOD_TARİH'] >= threshold_date)
-    df.loc[mask, 'PO_CREATIONDATE'] = threshold_date
-
-    # --- STEP 2: ALL FILTERING & DELETIONS ---
-    # A. Mandatory Column Check (Missing Data Deletion)
+    # --- STEP 3: EKSİK VERİ TEMİZLİĞİ ---
     initial_rows = len(df)
-    ignore_cols = ['OUTERDIAMETER', 'GAGE', 'WIDTH']
+    # Kritik Nokta: Tahminlemede 'İLK_BARKOD_TARİH' ve 'LEAD_TIME' zorunlu değildir
+    ignore_cols = ['OUTERDIAMETER', 'GAGE', 'WIDTH', 'İLK_BARKOD_TARİH', 'LEAD_TIME']
     check_cols = [c for c in df.columns if c not in ignore_cols]
+
+    # Zorunlu sütunlardan biri bile eksikse o satırı siler
     df = df.dropna(subset=check_cols, how='any').copy()
     na_deleted_count = initial_rows - len(df)
 
-    # B. Lead Time Calculation & Filtering (Logical Deletion)
-    df.loc[:, 'LEAD_TIME'] = (df['İLK_BARKOD_TARİH'] - df['PO_CREATIONDATE']).dt.days
-    rows_before_lt_filter = len(df)
-    df = df[df['LEAD_TIME'] <= 365].copy()
-    lt_deleted_count = rows_before_lt_filter - len(df)
+    # --- STEP 4: LEAD TIME & TRAINING LOGIC ---
+    lt_deleted_count = 0
+    if is_training:
+        # Eğitim modunda bu sütunlar şart! Yoksa hata verir
+        if 'İLK_BARKOD_TARİH' in df.columns and 'PO_CREATIONDATE' in df.columns:
+            df.loc[:, 'LEAD_TIME'] = (df['İLK_BARKOD_TARİH'] - df['PO_CREATIONDATE']).dt.days
+            rows_before_lt_filter = len(df)
+            df = df[df['LEAD_TIME'] <= 150].copy()  # 1 yıldan uzun süren "hatalı" verileri sil
+            lt_deleted_count = rows_before_lt_filter - len(df)
+        else:
+            raise KeyError("Eğitim (is_training=True) seçili ama 'İLK_BARKOD_TARİH' sütunu bulunamadı!")
 
     # --- CHECK ZONE ---
     print("\n" + "=" * 45)

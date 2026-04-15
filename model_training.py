@@ -260,3 +260,63 @@ def optimize_xgboost(df, features_list, target='LEAD_TIME', n_splits=5, n_trials
     study.optimize(objective, n_trials=n_trials)
 
     return study.best_params
+
+
+def train_and_save_final_model(df, features_list, target='LEAD_TIME', xgb_params=None):
+    """
+    Tüm veri seti ile nihai modeli eğitir.
+    Tedarikçi K-Means sözlüğünü ve Modeli bilgisayara kaydeder.
+    """
+    import json
+
+    X = df[[c for c in features_list if c in df.columns]].copy()
+    y = df[target]
+
+    print("\n[CANLIYA ALMA] K-Means Tedarikçi Grupları oluşturuluyor ve kaydediliyor...")
+    # 1. K-Means ve Sözlük Kaydı
+    train_temp = X.copy()
+    train_temp['LEAD_TIME'] = y
+    vendor_profiles = train_temp.groupby('VENDORFINAL').agg(mean_lead_time=('LEAD_TIME', 'mean')).fillna(0)
+
+    scaler = StandardScaler()
+    scaled_profiles = scaler.fit_transform(vendor_profiles)
+    kmeans = KMeans(n_clusters=5, random_state=42, n_init='auto')
+    vendor_profiles['VENDOR_CLUSTER'] = 'Cluster_' + kmeans.fit_predict(scaled_profiles).astype(str)
+
+    cluster_map = vendor_profiles['VENDOR_CLUSTER'].to_dict()
+
+    # Haritayı kaydet
+    with open('vendor_cluster_map.json', 'w') as f:
+        json.dump(cluster_map, f, indent=4)
+
+    X['VENDOR_GROUP'] = X['VENDORFINAL'].map(cluster_map).fillna('Cluster_New')
+    X.drop(columns=['VENDORFINAL'], inplace=True)
+
+    # 2. Kategorik Dönüşüm ve Kategori İsimlerini Kaydetme
+    cat_cols = X.select_dtypes(include=['object']).columns
+    categories_dict = {}
+    for col in cat_cols:
+        X[col] = X[col].astype('category')
+        categories_dict[col] = list(X[col].cat.categories)
+
+    with open('category_map.json', 'w') as f:
+        json.dump(categories_dict, f, indent=4)
+
+        # YENİ: Seçilen özellik listesini JSON olarak kaydet
+        with open('trained_features.json', 'w') as f:
+            json.dump(features_list, f, indent=4)
+        print("[KAYIT] Kullanılan özellik listesi 'trained_features.json' olarak kaydedildi.")
+
+    # 3. Nihai Model Eğitimi
+    print("[CANLIYA ALMA] Nihai XGBoost modeli tüm veriyle eğitiliyor...")
+    model = xgb.XGBRegressor(**xgb_params)
+    model.set_params(enable_categorical=True, tree_method='hist', objective='reg:squarederror')
+
+    model.fit(X, y, verbose=False)
+
+    # Modeli Kaydet
+    model.save_model('final_xgboost_model.json')
+    print(
+        "[CANLIYA ALMA BAŞARILI] 'final_xgboost_model.json', 'vendor_cluster_map.json' ve 'category_map.json' kaydedildi!")
+
+    return model
