@@ -54,13 +54,10 @@ def main():
     # Tahmin yap!
     tahminler = model.predict(X_new)
 
-    # Tahminleri orijinal veriye ekle ve yuvarla (Örn: 42.6 gün -> 43 gün)
-    df_raw['TAHMIN_EDILEN_SURE (GUN)'] = tahminler
-    df_raw['TAHMIN_EDILEN_SURE (GUN)'] = df_raw['TAHMIN_EDILEN_SURE (GUN)'].round(0).astype(int)
+    # DOĞRU OLAN (Temizlenmiş veriye ekle):
+    df['TAHMIN_EDILEN_SURE (GUN)'] = tahminler.round(0).astype(int)
+    df.to_excel('tahmin_sonuclari.xlsx', index=False)
 
-
-    # Sonucu kaydet
-    df_raw.to_excel('tahmin_sonuclari.xlsx', index=False)
     print("\n[BAŞARILI] Tahminler yapıldı ve 'tahmin_sonuclari.xlsx' olarak kaydedildi!")
 
 
