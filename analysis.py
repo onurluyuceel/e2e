@@ -91,7 +91,32 @@ def plot_unified_correlation(X, y, target_name='LEAD_TIME'):
                 corr = correlation_ratio(s2, s1) if is_num1 else correlation_ratio(s1, s2)
 
             corr_matrix.loc[col1, col2] = corr
+    # =========================================================================
+    # 2. YENİ EKLENEN: TERMİNALE YAZILI RAPOR BASMA KISMI
+    # =========================================================================
+    # Matrisi düzleştirip tabloya çeviriyoruz
+    corr_pairs = corr_matrix.unstack().reset_index()
+    corr_pairs.columns = ['Feature_1', 'Feature_2', 'Correlation']
 
+    # Kendisiyle olanları (Örn: PLANT vs PLANT) ve tekrarları (A-B ve B-A) engelliyoruz
+    corr_pairs = corr_pairs[corr_pairs['Feature_1'] < corr_pairs['Feature_2']].copy()
+    corr_pairs['Abs_Corr'] = corr_pairs['Correlation'].abs()
+
+    # Sadece 0.50'den büyük güçlü ilişkileri filtrele ve büyükten küçüğe sırala
+    high_corr = corr_pairs[corr_pairs['Abs_Corr'] >= 0.50].sort_values(by='Abs_Corr', ascending=False)
+
+    print("\n" + "=" * 70)
+    print("[KORELASYON RAPORU] Birbiriyle En Çok Örtüşen Özellikler (> %50)")
+    print("=" * 70)
+
+    if high_corr.empty:
+        print("  %50'nin üzerinde güçlü bir ilişki bulunamadı. Mükemmel!")
+    else:
+        print(f"  {'Özellik 1':<25} | {'Özellik 2':<25} | {'İlişki Gücü'}")
+        print("  " + "-" * 66)
+        for _, row in high_corr.iterrows():
+            print(f"  {row['Feature_1']:<25} | {row['Feature_2']:<25} | {row['Correlation']:.3f}")
+    print("=" * 70 + "\n")
     # 1. MASKE OLUŞTURMA: Mutlak değeri 0.50'den KÜÇÜK olanları "True" (yani gizle) yapıyoruz.
     # (abs kullanıyoruz çünkü -0.60 gibi güçlü ters ilişkilerin de görünmesini isteriz)
     mask = abs(corr_matrix) < 0.50
