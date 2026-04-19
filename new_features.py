@@ -119,6 +119,26 @@ def add_length_groups(df):
 
     return df
 
+
+def add_project_age(df, baslangic_tarihi='2024-01-01'):
+    """
+    Sabit bir başlangıç tarihine göre projenin (sipariş açıldığındaki) yaşını AY bazında hesaplar.
+    DİKKAT: 'baslangic_tarihi' parametresini projenizin gerçek ilk başladığı güne göre değiştirebilirsiniz.
+    """
+    if 'PO_CREATIONDATE' in df.columns:
+        anchor_date = pd.to_datetime(baslangic_tarihi)
+
+        # Önce gün farkını bul, sonra 30'a bölüp tam sayıya çevirerek 'Ay' değerini elde et
+        gun_farki = (df['PO_CREATIONDATE'] - anchor_date).dt.days
+        df['PROJE_YASI_AY'] = (gun_farki // 30).astype(int)
+
+        # Başlangıç tarihinden önce girilmiş hatalı tarihler varsa eksi çıkmasını önle
+        df.loc[df['PROJE_YASI_AY'] < 0, 'PROJE_YASI_AY'] = 0
+    else:
+        print("UYARI: 'PO_CREATIONDATE' bulunamadığı için Proje Yaşı (Ay) hesaplanamadı.")
+
+    return df
+
 def add_features(df):
     df = df.copy()
 
@@ -126,5 +146,5 @@ def add_features(df):
     df = add_new_material_classes(df)
     df = add_geometric_groups(df)
     df = add_length_groups(df)
-
+    df = add_project_age(df, baslangic_tarihi='2024-01-01')
     return df

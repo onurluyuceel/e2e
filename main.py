@@ -27,7 +27,7 @@ def main():
         'LOAD_ITEM', 'ORDER_MIKTAR', 'Yönetici Etkisi',
         'MAINPART GRUP', 'VENDORFINAL', 'MATERIALTYPE_NEW',
         'GEOMETRIC_GROUP', 'CALC_VOLUME', 'YUZEY_ISLEM',
-        'IDEAL_LEAD_TIME', 'LENGTH_GROUP_NUM', 'PLANT'
+        'IDEAL_LEAD_TIME', 'LENGTH_GROUP_NUM', 'PLANT', 'PROJE_YASI_AY'
     ]
 
     params_file = 'best_xgb_params.json'

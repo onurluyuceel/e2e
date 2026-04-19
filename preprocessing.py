@@ -22,13 +22,6 @@ def preprocess_data(df, is_training=True):
     for col in [c for c in numeric_cols if c in df.columns]:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    # --- ÖZEL KURAL: 1 EKİM TARİH DÜZENLEMESİ ---
-    # 1 Ekim kuralı sadece her iki tarih de varsa (Eğitimde) çalışır
-    if 'İLK_BARKOD_TARİH' in df.columns and 'PO_CREATIONDATE' in df.columns:
-        threshold_date = pd.Timestamp(2024, 10, 1)
-        mask = (df['PO_CREATIONDATE'] < threshold_date) & (df['İLK_BARKOD_TARİH'] >= threshold_date)
-        df.loc[mask, 'PO_CREATIONDATE'] = threshold_date
-
     # --- STEP 3: EKSİK VERİ TEMİZLİĞİ ---
     initial_rows = len(df)
     # Kritik Nokta: Tahminlemede 'İLK_BARKOD_TARİH' ve 'LEAD_TIME' zorunlu değildir
@@ -39,17 +32,21 @@ def preprocess_data(df, is_training=True):
     df = df.dropna(subset=check_cols, how='any').copy()
     na_deleted_count = initial_rows - len(df)
 
-    # --- STEP 4: LEAD TIME & TRAINING LOGIC ---
+    # --- STEP 3: LEAD TIME & TRAINING LOGIC ---
     lt_deleted_count = 0
     if is_training:
         # Eğitim modunda bu sütunlar şart! Yoksa hata verir
         if 'İLK_BARKOD_TARİH' in df.columns and 'PO_CREATIONDATE' in df.columns:
+
+            # Doğal ve sızıntısız Lead Time hesaplaması
             df.loc[:, 'LEAD_TIME'] = (df['İLK_BARKOD_TARİH'] - df['PO_CREATIONDATE']).dt.days
+
             rows_before_lt_filter = len(df)
-            df = df[df['LEAD_TIME'] <= 150].copy()  # 1 yıldan uzun süren "hatalı" verileri sil
+            df = df[df['LEAD_TIME'] <= 365].copy()  # 150 günden uzun süren "hatalı/uç" verileri sil
             lt_deleted_count = rows_before_lt_filter - len(df)
         else:
-            raise KeyError("Eğitim (is_training=True) seçili ama 'İLK_BARKOD_TARİH' sütunu bulunamadı!")
+            raise KeyError(
+                "Eğitim (is_training=True) seçili ama 'İLK_BARKOD_TARİH' veya 'PO_CREATIONDATE' sütunu bulunamadı!")
 
     # --- CHECK ZONE ---
     print("\n" + "=" * 45)
