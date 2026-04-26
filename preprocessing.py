@@ -40,10 +40,6 @@ def preprocess_data(df, is_training=True):
 
             # Doğal ve sızıntısız Lead Time hesaplaması
             df.loc[:, 'LEAD_TIME'] = (df['İLK_BARKOD_TARİH'] - df['PO_CREATIONDATE']).dt.days
-
-            rows_before_lt_filter = len(df)
-            df = df[df['LEAD_TIME'] <= 365].copy()  # 150 günden uzun süren "hatalı/uç" verileri sil
-            lt_deleted_count = rows_before_lt_filter - len(df)
         else:
             raise KeyError(
                 "Eğitim (is_training=True) seçili ama 'İLK_BARKOD_TARİH' veya 'PO_CREATIONDATE' sütunu bulunamadı!")
@@ -58,7 +54,6 @@ def preprocess_data(df, is_training=True):
     print("-" * 30)
 
     print(f"2. ROWS DELETED (Missing Mandatory Data): {na_deleted_count}")
-    print(f"3. ROWS DELETED (Lead Time > 365 Days): {lt_deleted_count}")
     print("-" * 30)
 
     print(f"4. FINAL CLEANED ROW COUNT: {len(df)}")
