@@ -254,8 +254,6 @@ def optimize_xgboost(df, features_list, target='LEAD_TIME', n_splits=5, n_trials
     # show_progress_bar=True ekleyerek görsel bir bar da görebilirsin (Opsiyonel)
     study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
 
-    return study.best_params
-
     study = optuna.create_study(direction='minimize')
     study.optimize(objective, n_trials=n_trials)
 
@@ -303,9 +301,9 @@ def train_and_save_final_model(df, features_list, target='LEAD_TIME', xgb_params
         json.dump(categories_dict, f, indent=4)
 
         # YENİ: Seçilen özellik listesini JSON olarak kaydet
-        with open('trained_features.json', 'w') as f:
-            json.dump(features_list, f, indent=4)
-        print("[KAYIT] Kullanılan özellik listesi 'trained_features.json' olarak kaydedildi.")
+    with open('trained_features.json', 'w') as f:
+        json.dump(features_list, f, indent=4)
+    print("[KAYIT] Kullanılan özellik listesi 'trained_features.json' olarak kaydedildi.")
 
     # 3. Nihai Model Eğitimi
     print("[CANLIYA ALMA] Nihai XGBoost modeli tüm veriyle eğitiliyor...")
