@@ -31,13 +31,6 @@ def main():
     # Artık X_new sadece bu listedeki sütunları otomatik seçecek
     X_new = df_featured[[c for c in selected_features if c in df_featured.columns]].copy()
 
-    print("3. K-Means Tedarikçi haritası uygulanıyor...")
-    with open('vendor_cluster_map.json', 'r') as f:
-        cluster_map = json.load(f)
-
-    X_new['VENDOR_GROUP'] = X_new['VENDORFINAL'].map(cluster_map).fillna('Cluster_New')
-    X_new.drop(columns=['VENDORFINAL'], inplace=True)
-
     print("4. Kategorik veri tipleri ayarlanıyor...")
     with open('category_map.json', 'r') as f:
         categories_dict = json.load(f)

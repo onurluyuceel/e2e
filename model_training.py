@@ -10,40 +10,6 @@ import optuna
 import json
 from analysis import plot_unified_correlation
 
-def apply_multidim_kmeans_clustering(X_train, X_test, y_train, n_clusters=5, verbose=True):
-    """
-    Tedarikçi bazlı gruplamayı veri sızıntısı olmadan yapar.
-    """
-    # 1. Profil çıkarma için geçici train seti
-    train_temp = X_train.copy()
-    train_temp['LEAD_TIME'] = y_train
-
-    # 2. SADECE TRAIN verisi üzerinden Tedarikçi Profillerini Çıkar
-    vendor_profiles = train_temp.groupby('VENDORFINAL').agg(
-        mean_lead_time=('LEAD_TIME', 'mean')
-    ).fillna(0)
-
-    # 3. K-Means öncesi veriyi ÖLÇEKLENDİR (Farklı birimleri eşitlemek için ŞART)
-    scaler = StandardScaler()
-    scaled_profiles = scaler.fit_transform(vendor_profiles)
-
-    # 4. K-Means Modelini eğit
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
-    vendor_profiles['VENDOR_CLUSTER'] = 'Cluster_' + kmeans.fit_predict(scaled_profiles).astype(str)
-
-    # 5. Eşleştirme sözlüğünü oluştur
-    cluster_map = vendor_profiles['VENDOR_CLUSTER'].to_dict()
-
-    # 6. Kümeleri Train ve Test setlerine uygula (Map)
-    X_train['VENDOR_GROUP'] = X_train['VENDORFINAL'].map(cluster_map).fillna('Cluster_New')
-    X_test['VENDOR_GROUP'] = X_test['VENDORFINAL'].map(cluster_map).fillna('Cluster_New')
-
-    # 7. Orijinal VENDORFINAL sütununu artık silebiliriz
-    X_train.drop(columns=['VENDORFINAL'], inplace=True)
-    X_test.drop(columns=['VENDORFINAL'], inplace=True)
-
-    return X_train, X_test
-
 def print_cv_summary_report(metrics):
     """
     Çapraz doğrulama (CV) metriklerinin ortalama ve standart sapmalarını
@@ -115,9 +81,6 @@ def run_cross_validation(df, features_list, target='LEAD_TIME', n_splits=5, xgb_
     for fold, (train_idx, test_idx) in enumerate(kf.split(X)):
         X_train, X_test = X.iloc[train_idx].copy(), X.iloc[test_idx].copy()
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
-
-        # KRİTİK ADIM: K-MEANS GRUPLAMA
-        X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train, verbose=False)
 
         # 4. KATEGORİK DEĞİŞKEN DÖNÜŞÜMÜ
         cat_cols = X_train.select_dtypes(include=['object']).columns
@@ -208,8 +171,6 @@ def optimize_xgboost(df, features_list, target='LEAD_TIME', n_splits=5, n_trials
         X_train, X_test = X.iloc[train_idx].copy(), X.iloc[test_idx].copy()
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-        X_train, X_test = apply_multidim_kmeans_clustering(X_train, X_test, y_train, verbose=False)
-
         cat_cols = X_train.select_dtypes(include=['object']).columns
         for col in cat_cols:
             X_train[col] = X_train[col].astype('category')
@@ -269,26 +230,6 @@ def train_and_save_final_model(df, features_list, target='LEAD_TIME', xgb_params
 
     X = df[[c for c in features_list if c in df.columns]].copy()
     y = df[target]
-
-    print("\n[CANLIYA ALMA] K-Means Tedarikçi Grupları oluşturuluyor ve kaydediliyor...")
-    # 1. K-Means ve Sözlük Kaydı
-    train_temp = X.copy()
-    train_temp['LEAD_TIME'] = y
-    vendor_profiles = train_temp.groupby('VENDORFINAL').agg(mean_lead_time=('LEAD_TIME', 'mean')).fillna(0)
-
-    scaler = StandardScaler()
-    scaled_profiles = scaler.fit_transform(vendor_profiles)
-    kmeans = KMeans(n_clusters=5, random_state=42, n_init='auto')
-    vendor_profiles['VENDOR_CLUSTER'] = 'Cluster_' + kmeans.fit_predict(scaled_profiles).astype(str)
-
-    cluster_map = vendor_profiles['VENDOR_CLUSTER'].to_dict()
-
-    # Haritayı kaydet
-    with open('vendor_cluster_map.json', 'w') as f:
-        json.dump(cluster_map, f, indent=4)
-
-    X['VENDOR_GROUP'] = X['VENDORFINAL'].map(cluster_map).fillna('Cluster_New')
-    X.drop(columns=['VENDORFINAL'], inplace=True)
 
     # 2. Kategorik Dönüşüm ve Kategori İsimlerini Kaydetme
     cat_cols = X.select_dtypes(include=['object']).columns
