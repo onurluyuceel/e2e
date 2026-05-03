@@ -119,32 +119,43 @@ def add_length_groups(df):
 
     return df
 
+# PLANT bazlı başlangıç tarihleri - manuel olarak doldur
+PLANT_BASLANGIC_TARIHLERI = {
+    'HRJ': '2022-06-06',
+    'HRB': '2023-03-17',
+    'GKB': '2023-01-06'
+}
+DEFAULT_BASLANGIC_TARIHI = '2024-01-01'
 
-def add_project_age(df, baslangic_tarihi='2024-01-01'):
-    """
-    Sabit bir başlangıç tarihine göre projenin (sipariş açıldığındaki) yaşını AY bazında hesaplar.
-    DİKKAT: 'baslangic_tarihi' parametresini projenizin gerçek ilk başladığı güne göre değiştirebilirsiniz.
-    """
-    if 'PO_CREATIONDATE' in df.columns:
-        anchor_date = pd.to_datetime(baslangic_tarihi)
 
-        # Önce gün farkını bul, sonra 30'a bölüp tam sayıya çevirerek 'Ay' değerini elde et
-        gun_farki = (df['PO_CREATIONDATE'] - anchor_date).dt.days
-        df['PROJE_YASI_AY'] = (gun_farki // 30).astype(int)
+def add_project_age(df, plant_tarihleri=None, default_tarih=None):
+    if plant_tarihleri is None:
+        plant_tarihleri = PLANT_BASLANGIC_TARIHLERI
+    if default_tarih is None:
+        default_tarih = DEFAULT_BASLANGIC_TARIHI
 
-        # Başlangıç tarihinden önce girilmiş hatalı tarihler varsa eksi çıkmasını önle
-        df.loc[df['PROJE_YASI_AY'] < 0, 'PROJE_YASI_AY'] = 0
+    if 'PO_CREATIONDATE' not in df.columns:
+        print("UYARI: 'PO_CREATIONDATE' bulunamadı.")
+        return df
+
+    if 'PLANT' not in df.columns:
+        anchor_series = pd.to_datetime(pd.Series([default_tarih] * len(df), index=df.index))
     else:
-        print("UYARI: 'PO_CREATIONDATE' bulunamadığı için Proje Yaşı (Ay) hesaplanamadı.")
+        anchor_series = pd.to_datetime(df['PLANT'].map(plant_tarihleri).fillna(default_tarih))
+        eksik = set(df['PLANT'].dropna().unique()) - set(plant_tarihleri.keys())
+        if eksik:
+            print(f"UYARI: Tarih girilmemiş PLANT'ler (default kullanıldı): {sorted(eksik)}")
 
+    gun_farki = (df['PO_CREATIONDATE'] - anchor_series).dt.days
+    df['PROJE_YASI_AY'] = (gun_farki // 30).astype(int)
+    df.loc[df['PROJE_YASI_AY'] < 0, 'PROJE_YASI_AY'] = 0
     return df
 
 def add_features(df):
     df = df.copy()
 
-    # Tüm alt fonksiyonları sırayla çalıştır
     df = add_new_material_classes(df)
     df = add_geometric_groups(df)
     df = add_length_groups(df)
-    df = add_project_age(df, baslangic_tarihi='2024-01-01')
+    df = add_project_age(df)
     return df
